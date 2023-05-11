@@ -122,6 +122,12 @@ namespace NwNsgProject
                                 networkWatcherRegions = Environment.GetEnvironmentVariable("nwRegions").Split(',');
                             }
                             List<string> list_networkWatcherRegions = new List<string>(networkWatcherRegions);
+                            log.LogInformation("list_networkWatcherRegions from above method : ");
+                            for(int i=0;i<list_networkWatcherRegions.Count;i++)
+                            {
+                            log.LogInformation(list_networkWatcherRegions[i]);
+                            }
+                            log.LogInformation("--------------------------------------------------");
 						   	await enable_flow_logs(result, nwList, token, subs_id, log,list_networkWatcherRegions);
 						}
 		            } 
@@ -175,10 +181,22 @@ namespace NwNsgProject
         	Dictionary<string, string> storageloc = new Dictionary<string, string>(); 
         	string[] all_locations = new string[]{"eastasia","southeastasia","centralus","eastus","eastus2","westus","northcentralus","southcentralus","northeurope","westeurope","japanwest","japaneast","brazilsouth","australiaeast","australiasoutheast","southindia","centralindia","westindia","canadacentral","canadaeast","uksouth","ukwest","westcentralus","westus2","koreacentral","koreasouth","francecentral","uaenorth","switzerlandnorth","norwaywest","germanywestcentral","swedencentral","jioindiawest","westus3","norwayeast","southafricanorth","australiacentral2","australiacentral","francesouth","qatarcentral"};
         	List<string> list_locations = new List<string>(all_locations);
+        	log.LogInformation("network watcher Regions list from enable_flow_logs : ");
+            for(int i=0;i<networkWatcherRegions.Count;i++)
+            {
+                log.LogInformation(networkWatcherRegions[i]);
+            }
+            log.LogInformation("--------------------------------------------------");
+            log.LogInformation("NSG list from enable_flow_logs : ");
+             foreach (var nsg in nsgresult.value) {
+                log.LogInformation(nsg.location);
+             }
+             log.LogInformation("--------------------------------------------------");
         	foreach (var nsg in nsgresult.value) {
         		if(( networkWatcherRegions == null || networkWatcherRegions.Count == 0) || networkWatcherRegions.Contains(nsg.location) ){
                    	if(list_locations.Contains(nsg.location)){
                        try {
+                       log.LogInformation(String.Format("check and create storage account for location  : {0}",nsg.location));
                                string loc_nw = nwList[nsg.location];
                                string storageId = "";
                                if(storageloc.ContainsKey(nsg.location)){
@@ -187,12 +205,15 @@ namespace NwNsgProject
                                    storageId = await check_avid_storage_account(token,subs_id,nsg.location,log);
                                    storageloc.Add(nsg.location, storageId);
                                }
+                               log.LogInformation(String.Format("storageId :{0} for location  : {1}",storageId,nsg.location));
                                if(storageId.Equals("null")){
                                    break;
                                }
+
                                await check_and_enable_flow_request(nsg, storageId, loc_nw, subs_id, token, log);
-                           } catch (System.Net.Http.HttpRequestException e) {
+                           } catch (Exception e) {
                                log.LogError(e, String.Format("Function UpdateNSGFlows is failed for Region : {0} is failing and subscriptionId : {1}",nsg.location ,subs_id));
+                               log.LogError(e.Message);
                            }
                     }
                 }
