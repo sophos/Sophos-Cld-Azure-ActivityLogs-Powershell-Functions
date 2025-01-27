@@ -54,7 +54,14 @@ namespace NwNsgProject
                 log.LogInformation("POC | value for storageAccountName: {StorageAccountName}", storageAccountName);
                 string blobAccountUrl = $"https://{storageAccountName}.blob.core.windows.net/";
                 var blobServiceClient = new BlobServiceClient(new Uri(blobAccountUrl), credential);
-                var blobClient = blobServiceClient.GetBlobClient(inputChunk.BlobName);
+                string blobContainerName = Util.GetEnvironmentVariable("blobContainerNameActivity");
+                if (blobContainerName.Length == 0)
+                {
+                    log.LogError("Value for blobContainerName is required.");
+                    throw new System.ArgumentNullException("blobContainerName", "Please provide setting.");
+                }
+                var blobContainerClient = blobServiceClient.GetBlobContainerClient(blobContainerName);
+                var blobClient = blobContainerClient.GetBlobClient(inputChunk.BlobName);
 
                 var range = new HttpRange(inputChunk.Start, inputChunk.Length);
                 var downloadOptions = new BlobDownloadOptions
