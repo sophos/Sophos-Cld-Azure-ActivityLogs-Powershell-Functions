@@ -10,6 +10,7 @@ using Azure.Storage.Blobs.Models;
 using Microsoft.Extensions.Logging;
 using System.Threading.Tasks;
 using System.Text;
+using Azure.Identity;
 
 namespace NwNsgProject
 {
@@ -19,9 +20,8 @@ namespace NwNsgProject
 
         [FunctionName("Stage2QueueTriggerActivity")]
         public static async Task Run(
-            [QueueTrigger("activitystage1", Connection = "AzureWebJobsStorage")]Chunk inputChunk,
-            [Queue("activitystage2", Connection = "AzureWebJobsStorage")] ICollector<Chunk> outputQueue,
-            IBinder binder, ILogger log)
+            [QueueTrigger("activitystage1")] Chunk inputChunk,
+            [Queue("activitystage2")] ICollector<Chunk> outputQueue, ILogger log)
         {
             try
             {
@@ -33,17 +33,35 @@ namespace NwNsgProject
                     return;
                 }
 
-                string nsgSourceDataAccount = Util.GetEnvironmentVariable("nsgSourceDataAccount");
-                if (nsgSourceDataAccount.Length == 0)
+                var credential = new DefaultAzureCredential();
+                string subscriptionIds = Util.GetEnvironmentVariable("subscriptionIds");
+                if (string.IsNullOrEmpty(subscriptionIds))
                 {
-                    log.LogError("Value for nsgSourceDataAccount is required.");
-                    throw new ArgumentNullException("nsgSourceDataAccount", "Please supply in this setting the name of the connection string from which NSG logs should be read.");
+                    log.LogError("Value for subscriptionIds is required.");
+                    throw new ArgumentNullException("subscriptionIds", "SubscriptionId is not found in environment settings.");
                 }
-
-                var blobClient = await binder.BindAsync<BlobClient>(new BlobAttribute(inputChunk.BlobName)
+                string customerId = Util.GetEnvironmentVariable("customerId");
+                if (string.IsNullOrEmpty(customerId))
                 {
-                    Connection = nsgSourceDataAccount
-                });
+                    log.LogError("Value for customerId is required.");
+                    throw new ArgumentNullException("customerId", "customerId is not found in environment settings..");
+                }
+                log.LogInformation("POC | value for subscriptionIds: {subscriptionIds}", subscriptionIds);
+
+                log.LogInformation("POC | value for customerId: {customerId}", customerId);
+
+                string storageAccountName = "lavidact" + subscriptionIds.Replace("-", "").Substring(0, 8) + customerId.Replace("-", "").Substring(0, 8);
+                log.LogInformation("POC | value for storageAccountName: {StorageAccountName}", storageAccountName);
+                string blobAccountUrl = $"https://{storageAccountName}.blob.core.windows.net/";
+                var blobServiceClient = new BlobServiceClient(new Uri(blobAccountUrl), credential);
+                string blobContainerName = Util.GetEnvironmentVariable("blobContainerNameActivity");
+                if (blobContainerName.Length == 0)
+                {
+                    log.LogError("Value for blobContainerName is required.");
+                    throw new System.ArgumentNullException("blobContainerName", "Please provide setting.");
+                }
+                var blobContainerClient = blobServiceClient.GetBlobContainerClient(blobContainerName);
+                var blobClient = blobContainerClient.GetBlobClient(inputChunk.BlobName);
 
                 var range = new HttpRange(inputChunk.Start, inputChunk.Length);
                 var downloadOptions = new BlobDownloadOptions
@@ -98,7 +116,7 @@ namespace NwNsgProject
             var chunk = new Chunk
             {
                 BlobName = thisChunk.BlobName,
-                BlobAccountConnectionName = thisChunk.BlobAccountConnectionName,
+                BlobAccountConnectionName = "ManagedIdentity",
                 LastBlockName = string.Format("{0}-{1}", index, thisChunk.LastBlockName),
                 Start = (start == 0 ? thisChunk.Start : start),
                 Length = 0
