@@ -68,7 +68,7 @@ namespace NwNsgProject
                             Length = chunklength,
                             LastBlockName = "",
                             Start = checkpoint.StartingByteOffset,
-                            BlobAccountConnectionName = storageAccountUrl
+                            BlobAccountConnectionName = "ManagedIdentity"
                         };
 
                     checkpoint.PutCheckpointActivity(tableClient, blobSize);
