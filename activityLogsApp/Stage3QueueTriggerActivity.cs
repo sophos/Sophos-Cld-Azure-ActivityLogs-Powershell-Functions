@@ -30,13 +30,24 @@ namespace NwNsgProject
             {
                 var credential = new DefaultAzureCredential();
 
-                // Get the storage account name from environment variables
-                string storageAccountName = Util.GetEnvironmentVariable("storageAccountName");
-                if (string.IsNullOrEmpty(storageAccountName))
-                {
-                    log.LogError("Value for storageAccountName is required.");
-                    throw new ArgumentNullException("storageAccountName", "Please supply the storage account name in environment settings.");
-                }
+               string subscriptionIds = Util.GetEnvironmentVariable("subscriptionIds");
+                 if (string.IsNullOrEmpty(subscriptionIds))
+                  {
+                      log.LogError("Value for subscriptionIds is required.");
+                      throw new ArgumentNullException("subscriptionIds", "SubscriptionId is not found in environment settings.");
+                  }
+                 string customerId = Util.GetEnvironmentVariable("customerId");
+                 if (string.IsNullOrEmpty(customerId))
+                  {
+                      log.LogError("Value for customerId is required.");
+                      throw new ArgumentNullException("customerId", "customerId is not found in environment settings..");
+                  }
+                  log.LogInformation("POC | value for subscriptionIds: {subscriptionIds}", subscriptionIds);
+
+                  log.LogInformation("POC | value for customerId: {customerId}", customerId);
+
+                 string storageAccountName = "lavidact" + subscriptionIds.Replace("-", "").Substring(0, 8) + customerId.Replace("-", "").Substring(0, 8);
+                    log.LogInformation("POC | value for storageAccountName: {StorageAccountName}", storageAccountName);
 
                 // Build the Blob Service Client using Managed Identity
                 string blobAccountUrl = $"https://{storageAccountName}.blob.core.windows.net/";
