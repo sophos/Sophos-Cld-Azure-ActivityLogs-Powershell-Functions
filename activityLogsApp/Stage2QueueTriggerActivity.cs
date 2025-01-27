@@ -34,24 +34,24 @@ namespace NwNsgProject
                 }
 
                 var credential = new DefaultAzureCredential();
-               string subscriptionIds = Util.GetEnvironmentVariable("subscriptionIds");
-                 if (string.IsNullOrEmpty(subscriptionIds))
-                  {
-                      log.LogError("Value for subscriptionIds is required.");
-                      throw new ArgumentNullException("subscriptionIds", "SubscriptionId is not found in environment settings.");
-                  }
-                 string customerId = Util.GetEnvironmentVariable("customerId");
-                 if (string.IsNullOrEmpty(customerId))
-                  {
-                      log.LogError("Value for customerId is required.");
-                      throw new ArgumentNullException("customerId", "customerId is not found in environment settings..");
-                  }
-                  log.LogInformation("POC | value for subscriptionIds: {subscriptionIds}", subscriptionIds);
+                string subscriptionIds = Util.GetEnvironmentVariable("subscriptionIds");
+                if (string.IsNullOrEmpty(subscriptionIds))
+                {
+                    log.LogError("Value for subscriptionIds is required.");
+                    throw new ArgumentNullException("subscriptionIds", "SubscriptionId is not found in environment settings.");
+                }
+                string customerId = Util.GetEnvironmentVariable("customerId");
+                if (string.IsNullOrEmpty(customerId))
+                {
+                    log.LogError("Value for customerId is required.");
+                    throw new ArgumentNullException("customerId", "customerId is not found in environment settings..");
+                }
+                log.LogInformation("POC | value for subscriptionIds: {subscriptionIds}", subscriptionIds);
 
-                  log.LogInformation("POC | value for customerId: {customerId}", customerId);
+                log.LogInformation("POC | value for customerId: {customerId}", customerId);
 
-                 string storageAccountName = "lavidact" + subscriptionIds.Replace("-", "").Substring(0, 8) + customerId.Replace("-", "").Substring(0, 8);
-                    log.LogInformation("POC | value for storageAccountName: {StorageAccountName}", storageAccountName);
+                string storageAccountName = "lavidact" + subscriptionIds.Replace("-", "").Substring(0, 8) + customerId.Replace("-", "").Substring(0, 8);
+                log.LogInformation("POC | value for storageAccountName: {StorageAccountName}", storageAccountName);
                 string blobAccountUrl = $"https://{storageAccountName}.blob.core.windows.net/";
                 var blobServiceClient = new BlobServiceClient(new Uri(blobAccountUrl), credential);
                 var blobClient = blobServiceClient.GetBlobClient(inputChunk.BlobName);

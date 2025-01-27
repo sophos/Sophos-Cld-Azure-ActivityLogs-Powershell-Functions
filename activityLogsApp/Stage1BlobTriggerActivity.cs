@@ -37,28 +37,28 @@ namespace NwNsgProject
 
                 var blobDetails = new BlobDetailsActivity(subId, blobYear, blobMonth, blobDay, blobHour, blobMinute);
 
-                 // Authenticate using Managed Identity
-                 var credential = new DefaultAzureCredential();
-                 string subscriptionIds = Util.GetEnvironmentVariable("subscriptionIds");
-                 if (string.IsNullOrEmpty(subscriptionIds))
-                  {
-                      log.LogError("Value for subscriptionIds is required.");
-                      throw new ArgumentNullException("subscriptionIds", "SubscriptionId is not found in environment settings.");
-                  }
-                 string customerId = Util.GetEnvironmentVariable("customerId");
-                 if (string.IsNullOrEmpty(customerId))
-                  {
-                      log.LogError("Value for customerId is required.");
-                      throw new ArgumentNullException("customerId", "customerId is not found in environment settings..");
-                  }
-                  log.LogInformation("POC | value for subscriptionIds: {subscriptionIds}", subscriptionIds);
+                // Authenticate using Managed Identity
+                var credential = new DefaultAzureCredential();
+                string subscriptionIds = Util.GetEnvironmentVariable("subscriptionIds");
+                if (string.IsNullOrEmpty(subscriptionIds))
+                {
+                    log.LogError("Value for subscriptionIds is required.");
+                    throw new ArgumentNullException("subscriptionIds", "SubscriptionId is not found in environment settings.");
+                }
+                string customerId = Util.GetEnvironmentVariable("customerId");
+                if (string.IsNullOrEmpty(customerId))
+                {
+                    log.LogError("Value for customerId is required.");
+                    throw new ArgumentNullException("customerId", "customerId is not found in environment settings..");
+                }
+                log.LogInformation("POC | value for subscriptionIds: {subscriptionIds}", subscriptionIds);
 
-                  log.LogInformation("POC | value for customerId: {customerId}", customerId);
+                log.LogInformation("POC | value for customerId: {customerId}", customerId);
 
-                 string storageAccountName = "lavidact" + subscriptionIds.Replace("-", "").Substring(0, 8) + customerId.Replace("-", "").Substring(0, 8);
-                    log.LogInformation("POC | value for storageAccountName: {StorageAccountName}", storageAccountName);
+                string storageAccountName = "lavidact" + subscriptionIds.Replace("-", "").Substring(0, 8) + customerId.Replace("-", "").Substring(0, 8);
+                log.LogInformation("POC | value for storageAccountName: {StorageAccountName}", storageAccountName);
 
-                 string tableEndpoint = $"https://{storageAccountName}.table.core.windows.net/";
+                string tableEndpoint = $"https://{storageAccountName}.table.core.windows.net/";
                 TableClient tableClient = new TableClient(new Uri(tableEndpoint), "activitycheckpoints", credential);
                 // Create table if not exist
                 await tableClient.CreateIfNotExistsAsync();
@@ -70,16 +70,16 @@ namespace NwNsgProject
                 var blobProperties = await myBlobActivity.GetPropertiesAsync();
                 long blobSize = blobProperties.Value.ContentLength;
                 long chunklength = blobSize - checkpoint.StartingByteOffset;
-                if(chunklength >10)
+                if (chunklength > 10)
                 {
                     Chunk newchunk = new Chunk
-                        {
-                            BlobName = blobContainerName + "/" + myBlobActivity.Name,
-                            Length = chunklength,
-                            LastBlockName = "",
-                            Start = checkpoint.StartingByteOffset,
-                            BlobAccountConnectionName = "ManagedIdentity"
-                        };
+                    {
+                        BlobName = blobContainerName + "/" + myBlobActivity.Name,
+                        Length = chunklength,
+                        LastBlockName = "",
+                        Start = checkpoint.StartingByteOffset,
+                        BlobAccountConnectionName = "ManagedIdentity"
+                    };
 
                     checkpoint.PutCheckpointActivity(tableClient, blobSize);
                     outputChunksActivity.Add(newchunk);
@@ -87,7 +87,7 @@ namespace NwNsgProject
             }
             catch (Exception e)
             {
-                 log.LogError(e, "Function Stage1BlobTriggerActivity is failed to process request");
+                log.LogError(e, "Function Stage1BlobTriggerActivity is failed to process request");
             }
 
         }

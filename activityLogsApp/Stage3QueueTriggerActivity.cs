@@ -24,30 +24,30 @@ namespace NwNsgProject
     {
         [FunctionName("Stage3QueueTriggerActivity")]
         public static async Task Run(
-            [QueueTrigger("activitystage2")] Chunk inputChunk,ILogger log)
+            [QueueTrigger("activitystage2")] Chunk inputChunk, ILogger log)
         {
             try
             {
                 var credential = new DefaultAzureCredential();
 
-               string subscriptionIds = Util.GetEnvironmentVariable("subscriptionIds");
-                 if (string.IsNullOrEmpty(subscriptionIds))
-                  {
-                      log.LogError("Value for subscriptionIds is required.");
-                      throw new ArgumentNullException("subscriptionIds", "SubscriptionId is not found in environment settings.");
-                  }
-                 string customerId = Util.GetEnvironmentVariable("customerId");
-                 if (string.IsNullOrEmpty(customerId))
-                  {
-                      log.LogError("Value for customerId is required.");
-                      throw new ArgumentNullException("customerId", "customerId is not found in environment settings..");
-                  }
-                  log.LogInformation("POC | value for subscriptionIds: {subscriptionIds}", subscriptionIds);
+                string subscriptionIds = Util.GetEnvironmentVariable("subscriptionIds");
+                if (string.IsNullOrEmpty(subscriptionIds))
+                {
+                    log.LogError("Value for subscriptionIds is required.");
+                    throw new ArgumentNullException("subscriptionIds", "SubscriptionId is not found in environment settings.");
+                }
+                string customerId = Util.GetEnvironmentVariable("customerId");
+                if (string.IsNullOrEmpty(customerId))
+                {
+                    log.LogError("Value for customerId is required.");
+                    throw new ArgumentNullException("customerId", "customerId is not found in environment settings..");
+                }
+                log.LogInformation("POC | value for subscriptionIds: {subscriptionIds}", subscriptionIds);
 
-                  log.LogInformation("POC | value for customerId: {customerId}", customerId);
+                log.LogInformation("POC | value for customerId: {customerId}", customerId);
 
-                 string storageAccountName = "lavidact" + subscriptionIds.Replace("-", "").Substring(0, 8) + customerId.Replace("-", "").Substring(0, 8);
-                    log.LogInformation("POC | value for storageAccountName: {StorageAccountName}", storageAccountName);
+                string storageAccountName = "lavidact" + subscriptionIds.Replace("-", "").Substring(0, 8) + customerId.Replace("-", "").Substring(0, 8);
+                log.LogInformation("POC | value for storageAccountName: {StorageAccountName}", storageAccountName);
 
                 // Build the Blob Service Client using Managed Identity
                 string blobAccountUrl = $"https://{storageAccountName}.blob.core.windows.net/";
@@ -56,7 +56,7 @@ namespace NwNsgProject
                 // Get a BlobClient for the specific blob
                 var blobClient = blobServiceClient.GetBlobClient(inputChunk.BlobName);
 
-                 var range = new HttpRange(inputChunk.Start, inputChunk.Length);
+                var range = new HttpRange(inputChunk.Start, inputChunk.Length);
                 var downloadOptions = new BlobDownloadOptions
                 {
                     Range = range
@@ -88,7 +88,7 @@ namespace NwNsgProject
         public static async Task SendMessagesDownstream(string myMessages, ILogger log)
         {
             await obAvidSecure(myMessages, log);
-            
+
         }
 
         static async Task obAvidSecure(string newClientContent, ILogger log)
@@ -112,7 +112,7 @@ namespace NwNsgProject
                 HttpRequestMessage req = new HttpRequestMessage(HttpMethod.Post, avidAddress);
                 req.Headers.Accept.Clear();
                 req.Headers.Accept.Add(new MediaTypeWithQualityHeaderValue("application/json"));
-                
+
                 req.Content = new StringContent(jsonString, Encoding.UTF8, "application/json");
                 HttpResponseMessage response = await SingleHttpClientInstance.SendToSplunk(req);
                 if (response.StatusCode != HttpStatusCode.OK)
@@ -132,7 +132,7 @@ namespace NwNsgProject
         }
 
 
-        
+
 
         public class SingleHttpClientInstance
         {
@@ -150,6 +150,6 @@ namespace NwNsgProject
                 return response;
             }
 
-        }      
+        }
     }
 }
