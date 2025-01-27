@@ -9,7 +9,7 @@ using Microsoft.Azure.WebJobs;
 using Microsoft.Azure.WebJobs.Host;
 using Microsoft.Extensions.Logging;
 using System.Threading.Tasks;
-
+using Azure.Identity;
 
 namespace NwNsgProject
 {
@@ -19,20 +19,14 @@ namespace NwNsgProject
 
         [FunctionName("Stage1BlobTriggerActivity")]
         public static async Task Run(
-            [BlobTrigger("%blobContainerNameActivity%/resourceId=/SUBSCRIPTIONS/{subId}/y={blobYear}/m={blobMonth}/d={blobDay}/h={blobHour}/m={blobMinute}/PT1H.json", Connection = "nsgSourceDataConnection")] AppendBlobClient myBlobActivity,
-            [Queue("activitystage1", Connection = "AzureWebJobsStorage")] ICollector<Chunk> outputChunksActivity,
+            [BlobTrigger("%blobContainerNameActivity%/resourceId=/SUBSCRIPTIONS/{subId}/y={blobYear}/m={blobMonth}/d={blobDay}/h={blobHour}/m={blobMinute}/PT1H.json")] AppendBlobClient myBlobActivity,
+            [Queue("activitystage1")] ICollector<Chunk> outputChunksActivity,
             string subId, string blobYear, string blobMonth, string blobDay, string blobHour, string blobMinute,
             ILogger log)
         {
             try
             {
                 log.LogInformation("starting");
-                string nsgSourceDataAccount = Util.GetEnvironmentVariable("nsgSourceDataAccount");
-                if (nsgSourceDataAccount.Length == 0)
-                {
-                    log.LogError("Value for nsgSourceDataAccount is required.");
-                    throw new System.ArgumentNullException("nsgSourceDataAccount", "Please provide setting.");
-                }
 
                 string blobContainerName = Util.GetEnvironmentVariable("blobContainerNameActivity");
                 if (blobContainerName.Length == 0)
@@ -43,9 +37,19 @@ namespace NwNsgProject
 
                 var blobDetails = new BlobDetailsActivity(subId, blobYear, blobMonth, blobDay, blobHour, blobMinute);
 
-                string storageConnectionString = Util.GetEnvironmentVariable("AzureWebJobsStorage");
-                // Create a TableClient instance
-                TableClient tableClient = new TableClient(storageConnectionString, "activitycheckpoints");
+                 // Authenticate using Managed Identity
+                 var credential = new DefaultAzureCredential();
+                 string storageAccountName = Util.GetEnvironmentVariable("storageAccountName");
+                 if (string.IsNullOrEmpty(storageAccountName))
+                 {
+                     log.LogError("Value for storageAccountName is required.");
+                     throw new ArgumentNullException("storageAccountName", "Please supply the storage account name in environment settings.");
+                 }
+
+                 string tableEndpoint = $"https://{storageAccountName}.table.core.windows.net/";
+
+                // Create a TableClient for checkpoints using Managed Identity
+                TableClient tableClient = new TableClient(new Uri(tableEndpoint), "activitycheckpoints", credential);
                 // Create table if not exist
                 await tableClient.CreateIfNotExistsAsync();
 
@@ -64,7 +68,7 @@ namespace NwNsgProject
                             Length = chunklength,
                             LastBlockName = "",
                             Start = checkpoint.StartingByteOffset,
-                            BlobAccountConnectionName = nsgSourceDataAccount
+                            BlobAccountConnectionName = storageAccountUrl
                         };
 
                     checkpoint.PutCheckpointActivity(tableClient, blobSize);

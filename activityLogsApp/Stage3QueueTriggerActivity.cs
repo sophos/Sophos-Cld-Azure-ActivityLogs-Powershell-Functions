@@ -16,6 +16,7 @@ using System.Net.Http;
 using System.Net.Http.Headers;
 using System.Security.Cryptography.X509Certificates;
 using System.Net.Security;
+using Azure.Identity;
 
 namespace NwNsgProject
 {
@@ -23,22 +24,27 @@ namespace NwNsgProject
     {
         [FunctionName("Stage3QueueTriggerActivity")]
         public static async Task Run(
-            [QueueTrigger("activitystage2", Connection = "AzureWebJobsStorage")]Chunk inputChunk,
-            IBinder binder, ILogger log)
+            [QueueTrigger("activitystage2")] Chunk inputChunk,ILogger log)
         {
             try
             {
-                string nsgSourceDataAccount = Util.GetEnvironmentVariable("nsgSourceDataAccount");
-                if (nsgSourceDataAccount.Length == 0)
+                var credential = new DefaultAzureCredential();
+
+                // Get the storage account name from environment variables
+                string storageAccountName = Util.GetEnvironmentVariable("storageAccountName");
+                if (string.IsNullOrEmpty(storageAccountName))
                 {
-                    log.LogError("Value for nsgSourceDataAccount is required.");
-                    throw new ArgumentNullException("nsgSourceDataAccount", "Please supply in this setting the name of the connection string from which NSG logs should be read.");
+                    log.LogError("Value for storageAccountName is required.");
+                    throw new ArgumentNullException("storageAccountName", "Please supply the storage account name in environment settings.");
                 }
 
-                var blobClient = await binder.BindAsync<BlobClient>(new BlobAttribute(inputChunk.BlobName)
-                {
-                    Connection = nsgSourceDataAccount
-                });
+                // Build the Blob Service Client using Managed Identity
+                string blobAccountUrl = $"https://{storageAccountName}.blob.core.windows.net/";
+                var blobServiceClient = new BlobServiceClient(new Uri(blobAccountUrl), credential);
+
+                // Get a BlobClient for the specific blob
+                var blobClient = blobServiceClient.GetBlobClient(inputChunk.BlobName);
+
                  var range = new HttpRange(inputChunk.Start, inputChunk.Length);
                 var downloadOptions = new BlobDownloadOptions
                 {

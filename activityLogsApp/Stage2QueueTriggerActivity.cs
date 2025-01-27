@@ -10,6 +10,7 @@ using Azure.Storage.Blobs.Models;
 using Microsoft.Extensions.Logging;
 using System.Threading.Tasks;
 using System.Text;
+using Azure.Identity;
 
 namespace NwNsgProject
 {
@@ -19,9 +20,8 @@ namespace NwNsgProject
 
         [FunctionName("Stage2QueueTriggerActivity")]
         public static async Task Run(
-            [QueueTrigger("activitystage1", Connection = "AzureWebJobsStorage")]Chunk inputChunk,
-            [Queue("activitystage2", Connection = "AzureWebJobsStorage")] ICollector<Chunk> outputQueue,
-            IBinder binder, ILogger log)
+            [QueueTrigger("activitystage1")] Chunk inputChunk,
+            [Queue("activitystage2")] ICollector<Chunk> outputQueue, ILogger log)
         {
             try
             {
@@ -33,17 +33,16 @@ namespace NwNsgProject
                     return;
                 }
 
-                string nsgSourceDataAccount = Util.GetEnvironmentVariable("nsgSourceDataAccount");
-                if (nsgSourceDataAccount.Length == 0)
+                var credential = new DefaultAzureCredential();
+                string storageAccountName = Util.GetEnvironmentVariable("storageAccountName");
+                if (string.IsNullOrEmpty(storageAccountName))
                 {
-                    log.LogError("Value for nsgSourceDataAccount is required.");
-                    throw new ArgumentNullException("nsgSourceDataAccount", "Please supply in this setting the name of the connection string from which NSG logs should be read.");
-                }
-
-                var blobClient = await binder.BindAsync<BlobClient>(new BlobAttribute(inputChunk.BlobName)
-                {
-                    Connection = nsgSourceDataAccount
-                });
+                    log.LogError("Value for storageAccountName is required.");
+                    throw new ArgumentNullException("storageAccountName", "Please supply the storage account name in environment settings.");
+                 }
+                string blobAccountUrl = $"https://{storageAccountName}.blob.core.windows.net/";
+                var blobServiceClient = new BlobServiceClient(new Uri(blobAccountUrl), credential);
+                var blobClient = blobServiceClient.GetBlobClient(inputChunk.BlobName);
 
                 var range = new HttpRange(inputChunk.Start, inputChunk.Length);
                 var downloadOptions = new BlobDownloadOptions
@@ -98,7 +97,7 @@ namespace NwNsgProject
             var chunk = new Chunk
             {
                 BlobName = thisChunk.BlobName,
-                BlobAccountConnectionName = thisChunk.BlobAccountConnectionName,
+                BlobAccountConnectionName = "ManagedIdentity", // Updated to indicate Managed Identity usage
                 LastBlockName = string.Format("{0}-{1}", index, thisChunk.LastBlockName),
                 Start = (start == 0 ? thisChunk.Start : start),
                 Length = 0
