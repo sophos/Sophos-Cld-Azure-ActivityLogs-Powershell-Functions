@@ -42,12 +42,12 @@ namespace NwNsgProject
                     log.LogError("Value for customerId is required.");
                     throw new ArgumentNullException("customerId", "customerId is not found in environment settings..");
                 }
-                log.LogInformation("POC | value for subscriptionIds: {subscriptionIds}", subscriptionIds);
+                log.LogInformation("POC3 | value for subscriptionIds: {subscriptionIds}", subscriptionIds);
 
-                log.LogInformation("POC | value for customerId: {customerId}", customerId);
+                log.LogInformation("POC3 | value for customerId: {customerId}", customerId);
 
                 string storageAccountName = "lavidact" + subscriptionIds.Replace("-", "").Substring(0, 8) + customerId.Replace("-", "").Substring(0, 8);
-                log.LogInformation("POC | value for storageAccountName: {StorageAccountName}", storageAccountName);
+                log.LogInformation("POC3 | value for storageAccountName: {StorageAccountName}", storageAccountName);
 
                 // Build the Blob Service Client using Managed Identity
                 string blobAccountUrl = $"https://{storageAccountName}.blob.core.windows.net/";
@@ -61,6 +61,15 @@ namespace NwNsgProject
                 }
                 var blobContainerClient = blobServiceClient.GetBlobContainerClient(blobContainerName);
                 var blobClient = blobContainerClient.GetBlobClient(inputChunk.BlobName);
+                // Check if the blob exists
+                if (!await blobClient.ExistsAsync())
+                {
+                    log.LogError("POC3 | Blob not found: {BlobName}", inputChunk.BlobName);
+                    return; // Exit gracefully
+                }
+
+                log.LogInformation("POC3 | Blob exists. Downloading: {BlobName}", inputChunk.BlobName);
+
 
                 var range = new HttpRange(inputChunk.Start, inputChunk.Length);
                 var downloadOptions = new BlobDownloadOptions

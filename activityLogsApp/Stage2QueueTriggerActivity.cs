@@ -30,6 +30,7 @@ namespace NwNsgProject
                 if (inputChunk.Length < MAX_CHUNK_SIZE)
                 {
                     outputQueue.Add(inputChunk);
+                    log.LogInformation("POC2 | input chunk length high {length}", inputChunk.Length);
                     return;
                 }
 
@@ -62,6 +63,14 @@ namespace NwNsgProject
                 }
                 var blobContainerClient = blobServiceClient.GetBlobContainerClient(blobContainerName);
                 var blobClient = blobContainerClient.GetBlobClient(inputChunk.BlobName);
+                  // Check if the blob exists
+                if (!await blobClient.ExistsAsync())
+                {
+                    log.LogError("POC2 | Blob not found: {BlobName}", inputChunk.BlobName);
+                    return; // Exit gracefully
+                }
+
+                log.LogInformation("POC2 | Blob exists. Downloading: {BlobName}", inputChunk.BlobName);
 
                 var range = new HttpRange(inputChunk.Start, inputChunk.Length);
                 var downloadOptions = new BlobDownloadOptions
