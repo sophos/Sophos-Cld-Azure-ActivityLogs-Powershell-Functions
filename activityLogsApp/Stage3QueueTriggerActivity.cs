@@ -24,53 +24,29 @@ namespace NwNsgProject
     {
         [FunctionName("Stage3QueueTriggerActivity")]
         public static async Task Run(
-            [QueueTrigger("activitystage2")] Chunk inputChunk, ILogger log)
+            [QueueTrigger("activitystage2")] Chunk inputChunk,
+            IBinder binder, ILogger log)
         {
             try
             {
-                var credential = new DefaultAzureCredential();
-
-                string subscriptionIds = Util.GetEnvironmentVariable("subscriptionIds");
-                if (string.IsNullOrEmpty(subscriptionIds))
+                string nsgSourceDataAccount = Util.GetEnvironmentVariable("AzureWebJobsStorage");
+                if (nsgSourceDataAccount.Length == 0)
                 {
-                    log.LogError("Value for subscriptionIds is required.");
-                    throw new ArgumentNullException("subscriptionIds", "SubscriptionId is not found in environment settings.");
+                    log.LogError("Value for nsgSourceDataAccount is required.");
+                    throw new ArgumentNullException("nsgSourceDataAccount", "Please supply in this setting the name of the connection string from which NSG logs should be read.");
                 }
-                string customerId = Util.GetEnvironmentVariable("customerId");
-                if (string.IsNullOrEmpty(customerId))
+
+                var blobClient = await binder.BindAsync<BlobClient>(new BlobAttribute(inputChunk.BlobName)
                 {
-                    log.LogError("Value for customerId is required.");
-                    throw new ArgumentNullException("customerId", "customerId is not found in environment settings..");
-                }
-                log.LogInformation("POC3 | value for subscriptionIds: {subscriptionIds}", subscriptionIds);
-
-                log.LogInformation("POC3 | value for customerId: {customerId}", customerId);
-
-                string storageAccountName = "lavidact" + subscriptionIds.Replace("-", "").Substring(0, 8) + customerId.Replace("-", "").Substring(0, 8);
-                log.LogInformation("POC3 | value for storageAccountName: {StorageAccountName}", storageAccountName);
-
-                // Build the Blob Service Client using Managed Identity
-                string blobAccountUrl = $"https://{storageAccountName}.blob.core.windows.net/";
-                var blobServiceClient = new BlobServiceClient(new Uri(blobAccountUrl), credential);
-
-                string blobContainerName = Util.GetEnvironmentVariable("blobContainerNameActivity");
-                if (blobContainerName.Length == 0)
-                {
-                    log.LogError("Value for blobContainerName is required.");
-                    throw new System.ArgumentNullException("blobContainerName", "Please provide setting.");
-                }
-                var blobContainerClient = blobServiceClient.GetBlobContainerClient(blobContainerName);
-                var blobClient = blobContainerClient.GetBlobClient(inputChunk.BlobName);
-                // Check if the blob exists
+                    Connection = nsgSourceDataAccount
+                });
                 if (!await blobClient.ExistsAsync())
                 {
-                    log.LogError("POC3 | Blob not found: {BlobName}", inputChunk.BlobName);
-                    return; // Exit gracefully
+                    log.LogError("POC2 | Blob not found: {BlobName}", inputChunk.BlobName);
+                    return;
                 }
 
-                log.LogInformation("POC3 | Blob exists. Downloading: {BlobName}", inputChunk.BlobName);
-
-
+                log.LogInformation("POC2 | Blob exists. Downloading: {BlobName}", inputChunk.BlobName);
                 var range = new HttpRange(inputChunk.Start, inputChunk.Length);
                 var downloadOptions = new BlobDownloadOptions
                 {
