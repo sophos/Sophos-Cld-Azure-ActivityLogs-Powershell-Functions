@@ -35,21 +35,21 @@ namespace NwNsgProject
                     return;
                 }
 
-                string nsgSourceDataAccount = Util.GetEnvironmentVariable("AzureWebJobsStorage");
-                if (nsgSourceDataAccount.Length == 0)
-                {
-                    log.LogError("Value for AzureWebJobsStorage is required.");
-                    throw new ArgumentNullException("AzureWebJobsStorage", "Please supply in this setting the name of the connection string from which NSG logs should be read.");
-                }
+                // string nsgSourceDataAccount = Util.GetEnvironmentVariable("AzureWebJobsStorage");
+                // if (nsgSourceDataAccount.Length == 0)
+                // {
+                //     log.LogError("Value for AzureWebJobsStorage is required.");
+                //     throw new ArgumentNullException("AzureWebJobsStorage", "Please supply in this setting the name of the connection string from which NSG logs should be read.");
+                // }
 
                 var blobClient = await binder.BindAsync<BlobClient>(new BlobAttribute(inputChunk.BlobName)
                 {
-                    Connection = nsgSourceDataAccount
+                    Connection = "AzureWebJobsStorage"
                 });
                    if (!await blobClient.ExistsAsync())
                 {
                     log.LogError("POC2 | Blob not found: {BlobName}", inputChunk.BlobName);
-                    return; // Exit gracefully
+                    return; 
                 }
 
                 log.LogInformation("POC2 | Blob exists. Downloading: {BlobName}", inputChunk.BlobName);
@@ -107,7 +107,7 @@ namespace NwNsgProject
             var chunk = new Chunk
             {
                 BlobName = thisChunk.BlobName,
-                BlobAccountConnectionName = thisChunk.BlobAccountConnectionName,
+                BlobAccountConnectionName = "ManagedIdentity",
                 LastBlockName = string.Format("{0}-{1}", index, thisChunk.LastBlockName),
                 Start = (start == 0 ? thisChunk.Start : start),
                 Length = 0
