@@ -20,8 +20,9 @@ namespace NwNsgProject
 
         [FunctionName("Stage2QueueTriggerActivity")]
         public static async Task Run(
-            [QueueTrigger("activitystage1")] Chunk inputChunk,
-            [Queue("activitystage2")] ICollector<Chunk> outputQueue, ILogger log)
+            [QueueTrigger("activitystage1")]Chunk inputChunk,
+            [Queue("activitystage2")] ICollector<Chunk> outputQueue,
+            IBinder binder, ILogger log)
         {
             try
             {
@@ -30,41 +31,22 @@ namespace NwNsgProject
                 if (inputChunk.Length < MAX_CHUNK_SIZE)
                 {
                     outputQueue.Add(inputChunk);
-                    log.LogInformation("POC2 | input chunk length high {length}", inputChunk.Length);
+                    log.LogInformation("POC2 | input chunk length is small: {length}", inputChunk.Length);
                     return;
                 }
 
-                var credential = new DefaultAzureCredential();
-                string subscriptionIds = Util.GetEnvironmentVariable("subscriptionIds");
-                if (string.IsNullOrEmpty(subscriptionIds))
+                string nsgSourceDataAccount = Util.GetEnvironmentVariable("AzureWebJobsStorage");
+                if (nsgSourceDataAccount.Length == 0)
                 {
-                    log.LogError("Value for subscriptionIds is required.");
-                    throw new ArgumentNullException("subscriptionIds", "SubscriptionId is not found in environment settings.");
+                    log.LogError("Value for AzureWebJobsStorage is required.");
+                    throw new ArgumentNullException("AzureWebJobsStorage", "Please supply in this setting the name of the connection string from which NSG logs should be read.");
                 }
-                string customerId = Util.GetEnvironmentVariable("customerId");
-                if (string.IsNullOrEmpty(customerId))
-                {
-                    log.LogError("Value for customerId is required.");
-                    throw new ArgumentNullException("customerId", "customerId is not found in environment settings..");
-                }
-                log.LogInformation("POC | value for subscriptionIds: {subscriptionIds}", subscriptionIds);
 
-                log.LogInformation("POC | value for customerId: {customerId}", customerId);
-
-                string storageAccountName = "lavidact" + subscriptionIds.Replace("-", "").Substring(0, 8) + customerId.Replace("-", "").Substring(0, 8);
-                log.LogInformation("POC | value for storageAccountName: {StorageAccountName}", storageAccountName);
-                string blobAccountUrl = $"https://{storageAccountName}.blob.core.windows.net/";
-                var blobServiceClient = new BlobServiceClient(new Uri(blobAccountUrl), credential);
-                string blobContainerName = Util.GetEnvironmentVariable("blobContainerNameActivity");
-                if (blobContainerName.Length == 0)
+                var blobClient = await binder.BindAsync<BlobClient>(new BlobAttribute(inputChunk.BlobName)
                 {
-                    log.LogError("Value for blobContainerName is required.");
-                    throw new System.ArgumentNullException("blobContainerName", "Please provide setting.");
-                }
-                var blobContainerClient = blobServiceClient.GetBlobContainerClient(blobContainerName);
-                var blobClient = blobContainerClient.GetBlobClient(inputChunk.BlobName);
-                  // Check if the blob exists
-                if (!await blobClient.ExistsAsync())
+                    Connection = nsgSourceDataAccount
+                });
+                   if (!await blobClient.ExistsAsync())
                 {
                     log.LogError("POC2 | Blob not found: {BlobName}", inputChunk.BlobName);
                     return; // Exit gracefully
@@ -125,7 +107,7 @@ namespace NwNsgProject
             var chunk = new Chunk
             {
                 BlobName = thisChunk.BlobName,
-                BlobAccountConnectionName = "ManagedIdentity",
+                BlobAccountConnectionName = thisChunk.BlobAccountConnectionName,
                 LastBlockName = string.Format("{0}-{1}", index, thisChunk.LastBlockName),
                 Start = (start == 0 ? thisChunk.Start : start),
                 Length = 0
