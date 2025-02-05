@@ -16,7 +16,6 @@ using System.Net.Http;
 using System.Net.Http.Headers;
 using System.Security.Cryptography.X509Certificates;
 using System.Net.Security;
-using Azure.Identity;
 
 namespace NwNsgProject
 {
@@ -24,30 +23,23 @@ namespace NwNsgProject
     {
         [FunctionName("Stage3QueueTriggerActivity")]
         public static async Task Run(
-            [QueueTrigger("activitystage2")] Chunk inputChunk,
+            [QueueTrigger("activitystage2", Connection = "AzureWebJobsStorage")]Chunk inputChunk,
             IBinder binder, ILogger log)
         {
             try
             {
-                // string nsgSourceDataAccount = Util.GetEnvironmentVariable("AzureWebJobsStorage");
-                // if (nsgSourceDataAccount.Length == 0)
-                // {
-                //     log.LogError("Value for nsgSourceDataAccount is required.");
-                //     throw new ArgumentNullException("nsgSourceDataAccount", "Please supply in this setting the name of the connection string from which NSG logs should be read.");
-                // }
+                string nsgSourceDataAccount = Util.GetEnvironmentVariable("nsgSourceDataAccount");
+                if (nsgSourceDataAccount.Length == 0)
+                {
+                    log.LogError("Value for nsgSourceDataAccount is required.");
+                    throw new ArgumentNullException("nsgSourceDataAccount", "Please supply in this setting the name of the connection string from which NSG logs should be read.");
+                }
 
                 var blobClient = await binder.BindAsync<BlobClient>(new BlobAttribute(inputChunk.BlobName)
                 {
-                    Connection = "AzureWebJobsStorage"
+                    Connection = nsgSourceDataAccount
                 });
-                if (!await blobClient.ExistsAsync())
-                {
-                    log.LogError("POC2 | Blob not found: {BlobName}", inputChunk.BlobName);
-                    return;
-                }
-
-                log.LogInformation("POC2 | Blob exists. Downloading: {BlobName}", inputChunk.BlobName);
-                var range = new HttpRange(inputChunk.Start, inputChunk.Length);
+                 var range = new HttpRange(inputChunk.Start, inputChunk.Length);
                 var downloadOptions = new BlobDownloadOptions
                 {
                     Range = range
