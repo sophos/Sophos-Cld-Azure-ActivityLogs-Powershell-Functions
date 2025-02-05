@@ -42,21 +42,15 @@ namespace NwNsgProject
                 string subscriptionIds = Util.GetEnvironmentVariable("subscriptionIds");
                 if (string.IsNullOrEmpty(subscriptionIds))
                 {
-                    log.LogError("Value for subscriptionIds is required.");
                     throw new ArgumentNullException("subscriptionIds", "SubscriptionId is not found in environment settings.");
                 }
                 string customerId = Util.GetEnvironmentVariable("customerId");
                 if (string.IsNullOrEmpty(customerId))
                 {
-                    log.LogError("Value for customerId is required.");
                     throw new ArgumentNullException("customerId", "customerId is not found in environment settings..");
                 }
-                log.LogInformation("POC | value for subscriptionIds: {subscriptionIds}", subscriptionIds);
 
-                log.LogInformation("POC | value for customerId: {customerId}", customerId);
-
-                string storageAccountName = "lavidact" + subscriptionIds.Replace("-", "").Substring(0, 8) + customerId.Replace("-", "").Substring(0, 8);
-                log.LogInformation("POC | value for storageAccountName: {StorageAccountName}", storageAccountName);
+                string storageAccountName = "lavidact" + subscriptionIds.Replace("-", "").Substring(0, 8) + customerId.Replace("-", "").Substring(0, 8);// fetch storage account name from env variables instead of calculating here
 
                 string tableEndpoint = $"https://{storageAccountName}.table.core.windows.net/";
                 TableClient tableClient = new TableClient(new Uri(tableEndpoint), "activitycheckpoints", credential);

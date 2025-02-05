@@ -29,24 +29,14 @@ namespace NwNsgProject
         {
             try
             {
-                // string nsgSourceDataAccount = Util.GetEnvironmentVariable("AzureWebJobsStorage");
-                // if (nsgSourceDataAccount.Length == 0)
-                // {
-                //     log.LogError("Value for nsgSourceDataAccount is required.");
-                //     throw new ArgumentNullException("nsgSourceDataAccount", "Please supply in this setting the name of the connection string from which NSG logs should be read.");
-                // }
-
                 var blobClient = await binder.BindAsync<BlobClient>(new BlobAttribute(inputChunk.BlobName)
                 {
                     Connection = "AzureWebJobsStorage"
                 });
                 if (!await blobClient.ExistsAsync())
                 {
-                    log.LogError("POC2 | Blob not found: {BlobName}", inputChunk.BlobName);
                     return;
                 }
-
-                log.LogInformation("POC2 | Blob exists. Downloading: {BlobName}", inputChunk.BlobName);
                 var range = new HttpRange(inputChunk.Start, inputChunk.Length);
                 var downloadOptions = new BlobDownloadOptions
                 {

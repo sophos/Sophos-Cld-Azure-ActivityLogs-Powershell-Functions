@@ -31,16 +31,8 @@ namespace NwNsgProject
                 if (inputChunk.Length < MAX_CHUNK_SIZE)
                 {
                     outputQueue.Add(inputChunk);
-                    log.LogInformation("POC2 | input chunk length is small: {length}", inputChunk.Length);
                     return;
                 }
-
-                // string nsgSourceDataAccount = Util.GetEnvironmentVariable("AzureWebJobsStorage");
-                // if (nsgSourceDataAccount.Length == 0)
-                // {
-                //     log.LogError("Value for AzureWebJobsStorage is required.");
-                //     throw new ArgumentNullException("AzureWebJobsStorage", "Please supply in this setting the name of the connection string from which NSG logs should be read.");
-                // }
 
                 var blobClient = await binder.BindAsync<BlobClient>(new BlobAttribute(inputChunk.BlobName)
                 {
@@ -48,11 +40,8 @@ namespace NwNsgProject
                 });
                    if (!await blobClient.ExistsAsync())
                 {
-                    log.LogError("POC2 | Blob not found: {BlobName}", inputChunk.BlobName);
                     return; 
                 }
-
-                log.LogInformation("POC2 | Blob exists. Downloading: {BlobName}", inputChunk.BlobName);
 
                 var range = new HttpRange(inputChunk.Start, inputChunk.Length);
                 var downloadOptions = new BlobDownloadOptions
