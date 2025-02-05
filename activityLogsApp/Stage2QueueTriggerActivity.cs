@@ -10,6 +10,7 @@ using Azure.Storage.Blobs.Models;
 using Microsoft.Extensions.Logging;
 using System.Threading.Tasks;
 using System.Text;
+using Azure.Identity;
 
 namespace NwNsgProject
 {
@@ -19,8 +20,8 @@ namespace NwNsgProject
 
         [FunctionName("Stage2QueueTriggerActivity")]
         public static async Task Run(
-            [QueueTrigger("activitystage1", Connection = "AzureWebJobsStorage")]Chunk inputChunk,
-            [Queue("activitystage2", Connection = "AzureWebJobsStorage")] ICollector<Chunk> outputQueue,
+            [QueueTrigger("activitystage1")]Chunk inputChunk,
+            [Queue("activitystage2")] ICollector<Chunk> outputQueue,
             IBinder binder, ILogger log)
         {
             try
@@ -33,17 +34,14 @@ namespace NwNsgProject
                     return;
                 }
 
-                string nsgSourceDataAccount = Util.GetEnvironmentVariable("nsgSourceDataAccount");
-                if (nsgSourceDataAccount.Length == 0)
-                {
-                    log.LogError("Value for nsgSourceDataAccount is required.");
-                    throw new ArgumentNullException("nsgSourceDataAccount", "Please supply in this setting the name of the connection string from which NSG logs should be read.");
-                }
-
                 var blobClient = await binder.BindAsync<BlobClient>(new BlobAttribute(inputChunk.BlobName)
                 {
-                    Connection = nsgSourceDataAccount
+                    Connection = "AzureWebJobsStorage"
                 });
+                   if (!await blobClient.ExistsAsync())
+                {
+                    return; 
+                }
 
                 var range = new HttpRange(inputChunk.Start, inputChunk.Length);
                 var downloadOptions = new BlobDownloadOptions
@@ -98,7 +96,7 @@ namespace NwNsgProject
             var chunk = new Chunk
             {
                 BlobName = thisChunk.BlobName,
-                BlobAccountConnectionName = thisChunk.BlobAccountConnectionName,
+                BlobAccountConnectionName = "ManagedIdentity",
                 LastBlockName = string.Format("{0}-{1}", index, thisChunk.LastBlockName),
                 Start = (start == 0 ? thisChunk.Start : start),
                 Length = 0

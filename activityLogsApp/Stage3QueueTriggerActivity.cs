@@ -16,6 +16,7 @@ using System.Net.Http;
 using System.Net.Http.Headers;
 using System.Security.Cryptography.X509Certificates;
 using System.Net.Security;
+using Azure.Identity;
 
 namespace NwNsgProject
 {
@@ -23,23 +24,20 @@ namespace NwNsgProject
     {
         [FunctionName("Stage3QueueTriggerActivity")]
         public static async Task Run(
-            [QueueTrigger("activitystage2", Connection = "AzureWebJobsStorage")]Chunk inputChunk,
+            [QueueTrigger("activitystage2")] Chunk inputChunk,
             IBinder binder, ILogger log)
         {
             try
             {
-                string nsgSourceDataAccount = Util.GetEnvironmentVariable("nsgSourceDataAccount");
-                if (nsgSourceDataAccount.Length == 0)
-                {
-                    log.LogError("Value for nsgSourceDataAccount is required.");
-                    throw new ArgumentNullException("nsgSourceDataAccount", "Please supply in this setting the name of the connection string from which NSG logs should be read.");
-                }
-
                 var blobClient = await binder.BindAsync<BlobClient>(new BlobAttribute(inputChunk.BlobName)
                 {
-                    Connection = nsgSourceDataAccount
+                    Connection = "AzureWebJobsStorage"
                 });
-                 var range = new HttpRange(inputChunk.Start, inputChunk.Length);
+                if (!await blobClient.ExistsAsync())
+                {
+                    return;
+                }
+                var range = new HttpRange(inputChunk.Start, inputChunk.Length);
                 var downloadOptions = new BlobDownloadOptions
                 {
                     Range = range
@@ -71,7 +69,7 @@ namespace NwNsgProject
         public static async Task SendMessagesDownstream(string myMessages, ILogger log)
         {
             await obAvidSecure(myMessages, log);
-            
+
         }
 
         static async Task obAvidSecure(string newClientContent, ILogger log)
@@ -95,7 +93,7 @@ namespace NwNsgProject
                 HttpRequestMessage req = new HttpRequestMessage(HttpMethod.Post, avidAddress);
                 req.Headers.Accept.Clear();
                 req.Headers.Accept.Add(new MediaTypeWithQualityHeaderValue("application/json"));
-                
+
                 req.Content = new StringContent(jsonString, Encoding.UTF8, "application/json");
                 HttpResponseMessage response = await SingleHttpClientInstance.SendToSplunk(req);
                 if (response.StatusCode != HttpStatusCode.OK)
@@ -115,7 +113,7 @@ namespace NwNsgProject
         }
 
 
-        
+
 
         public class SingleHttpClientInstance
         {
@@ -133,6 +131,6 @@ namespace NwNsgProject
                 return response;
             }
 
-        }      
+        }
     }
 }
