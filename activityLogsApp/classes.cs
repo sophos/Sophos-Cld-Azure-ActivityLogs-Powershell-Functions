@@ -230,6 +230,18 @@ class NetworkSecurityGroup
     public string id { get; set; }
 }
 
+class VNETApiResult
+{
+    public VirtualNetwork[] value { get; set; }
+}
+
+class VirtualNetwork
+{
+    public string name { get; set; }
+    public string location { get; set; }
+    public string id { get; set; }
+}
+
 class ActivityLogsRecords
 {
     public ActivityLogsRecord[] records { get; set; }
