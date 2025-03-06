@@ -116,7 +116,7 @@ namespace NwNsgProject
 		                if (response.IsSuccessStatusCode)
 						{
 						    string data =  await response.Content.ReadAsStringAsync();
-						    var result = JsonConvert.DeserializeObject<NSGApiResult>(data);
+						    var result = JsonConvert.DeserializeObject<VNETApiResult>(data);
 
                             string[] networkWatcherRegions = new string[0];
                             if( !String.IsNullOrEmpty(Environment.GetEnvironmentVariable("nwRegions"))){
