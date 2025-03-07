@@ -124,6 +124,7 @@ namespace NwNsgProject
                             }
                             List<string> list_networkWatcherRegions = new List<string>(networkWatcherRegions);
 						   	await enable_flow_logs(result, nwList, token, subs_id, log,list_networkWatcherRegions);
+						   	log.LogInformation(e, "Added the flow logs for vnet successfully");
 						}
 		            }
 		            catch (System.Net.Http.HttpRequestException e)
@@ -172,7 +173,7 @@ namespace NwNsgProject
 
         static async Task enable_flow_logs(VNETApiResult vnetresult, Dictionary<string, string> nwList, String token, String subs_id, ILogger log,List<string> networkWatcherRegions)
         {
-
+            log.LogInformation(e, "Entered into the enableflowlogs function");
         	Dictionary<string, string> storageloc = new Dictionary<string, string>();
         	string[] all_locations = new string[]{"eastasia","southeastasia","centralus","eastus","eastus2","westus","northcentralus","southcentralus","northeurope","westeurope","japanwest","japaneast","brazilsouth","australiaeast","australiasoutheast","southindia","centralindia","westindia","canadacentral","canadaeast","uksouth","ukwest","westcentralus","westus2","koreacentral","koreasouth","francecentral","uaenorth","switzerlandnorth","norwaywest","germanywestcentral","swedencentral","jioindiawest","westus3","norwayeast","southafricanorth","australiacentral2","australiacentral","francesouth","qatarcentral"};
         	List<string> list_locations = new List<string>(all_locations);
@@ -192,6 +193,7 @@ namespace NwNsgProject
                                    break;
                                }
                                await check_and_enable_flow_request(vnet, storageId, loc_nw, subs_id, token, log);
+                               log.LogInformation(e, "Completed checkandenableflowlogsrequest function");
                            } catch (System.Net.Http.HttpRequestException e) {
                                log.LogError(e, String.Format("Function UpdateNSGFlows is failed for Region : {0} is failing and subscriptionId : {1}",vnet.location ,subs_id));
                            }
@@ -214,6 +216,7 @@ namespace NwNsgProject
         }
 
         static async Task<String> check_and_enable_flow_request(VirtualNetwork vnet, String storageId, String loc_nw, String subs_id, String token, ILogger log){
+        	log.LogInformation(e, "Entered into the checkandenableflowlogsrequest function");
         	string enable_flow_logs_url = "https://management.azure.com{0}/configureFlowLog?api-version=2021-06-01";
         	string query_flow_logs_url = "https://management.azure.com{0}/queryFlowLogStatus?api-version=2021-06-01";
 
