@@ -238,6 +238,7 @@ class VNETApiResult
 class VirtualNetwork
 {
     public string name { get; set; }
+    public string resourceGroup { get; set; }
     public string location { get; set; }
     public string id { get; set; }
 }

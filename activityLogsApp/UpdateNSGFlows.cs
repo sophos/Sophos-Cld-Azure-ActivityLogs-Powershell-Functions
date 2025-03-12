@@ -192,7 +192,8 @@ namespace NwNsgProject
                                if(storageId.Equals("null")){
                                    break;
                                }
-                               await check_and_enable_flow_request(vnet, storageId, loc_nw, subs_id, token, log);
+                               String resourceGroup = vnet.resourceGroup;
+                               await check_and_enable_flow_request(vnet, resourceGroup, storageId, loc_nw, subs_id, token, log);
                                log.LogInformation(e, "Completed the check and enable flow request function successfully");
                            } catch (System.Net.Http.HttpRequestException e) {
                                log.LogError(e, String.Format("Function UpdateNSGFlows is failed for Region : {0} is failing and subscriptionId : {1}",vnet.location ,subs_id));
@@ -215,25 +216,31 @@ namespace NwNsgProject
 		   	}
         }
 
-        static async Task<String> check_and_enable_flow_request(VirtualNetwork vnet, String storageId, String loc_nw, String subs_id, String token, ILogger log){
+        static async Task<String> check_and_enable_flow_request(VirtualNetwork vnet, String resourceGroupName, String storageId, String loc_nw, String subs_id, String token, ILogger log){
         	log.LogInformation(e, "Entered into the check and enable flow request function");
-        	string enable_flow_logs_url = "https://management.azure.com{0}/configureFlowLog?api-version=2021-06-01";
-        	string query_flow_logs_url = "https://management.azure.com{0}/queryFlowLogStatus?api-version=2021-06-01";
+        	string networkWatcherName = $"NetworkWatcher_{loc_nw}";
+//        	string enable_flow_logs_url = "https://management.azure.com{0}/configureFlowLog?api-version=2021-06-01";
+//        	string query_flow_logs_url = "https://management.azure.com{0}/queryFlowLogStatus?api-version=2021-06-01";
+            string query_flow_logs_url = $"https://management.azure.com/subscriptions/{subscriptionId}/resourceGroups/{resourceGroupName}/providers/Microsoft.Network/networkWatchers/{networkWatcherName}/trafficAnalyticsConfigurations/default?api-version=2023-05-01";
+            string enable_flow_logs_url = $"https://management.azure.com/subscriptions/{subscriptionId}/resourceGroups/{resourceGroupName}/providers/Microsoft.Network/networkWatchers/{networkWatcherName}/trafficAnalyticsConfigurations/default?api-version=2023-05-01";
 
+            log.LogInformation(e, "Entered into the check and enable flow request function");
 
         	var client = new SingleHttpClientInstance();
         	try
             {
 
             	dynamic myObject = new JObject();
-            	myObject.targetResourceId = vnet.id;
-            	HttpRequestMessage checkReq = new HttpRequestMessage(HttpMethod.Post, String.Format(query_flow_logs_url, loc_nw));
+//            	myObject.targetResourceId = vnet.id;
+            	HttpRequestMessage checkReq = new HttpRequestMessage(HttpMethod.Post, String.Format(query_flow_logs_url));
             	var content = new StringContent(myObject.ToString(), Encoding.UTF8, "application/json");
             	checkReq.Content = content;
                 checkReq.Headers.Accept.Clear();
                 checkReq.Headers.Accept.Add(new MediaTypeWithQualityHeaderValue("application/json"));
 
                 HttpResponseMessage check_response = await SingleHttpClientInstance.sendApiPostRequest(checkReq, token);
+
+                log.LogInformation(e, "Entered into the check and enable flow request function inside try");
 
                 if (check_response.IsSuccessStatusCode)
 				{
@@ -257,6 +264,8 @@ namespace NwNsgProject
             	properties.retentionPolicy = retention;
             	myObject.properties = properties;
             	content = new StringContent(myObject.ToString(), Encoding.UTF8, "application/json");
+
+            	log.LogInformation(e, "Entered into the check and enable flow request function and enabling the flow logs for this vnet");
 
 
                 HttpRequestMessage req = new HttpRequestMessage(HttpMethod.Post, String.Format(enable_flow_logs_url, loc_nw));
