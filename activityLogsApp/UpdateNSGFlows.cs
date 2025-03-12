@@ -221,8 +221,8 @@ namespace NwNsgProject
         	string networkWatcherName = $"NetworkWatcher_{loc_nw}";
 //        	string enable_flow_logs_url = "https://management.azure.com{0}/configureFlowLog?api-version=2021-06-01";
 //        	string query_flow_logs_url = "https://management.azure.com{0}/queryFlowLogStatus?api-version=2021-06-01";
-            string query_flow_logs_url = $"https://management.azure.com/subscriptions/{subscriptionId}/resourceGroups/{resourceGroupName}/providers/Microsoft.Network/networkWatchers/{networkWatcherName}/trafficAnalyticsConfigurations/default?api-version=2023-05-01";
-            string enable_flow_logs_url = $"https://management.azure.com/subscriptions/{subscriptionId}/resourceGroups/{resourceGroupName}/providers/Microsoft.Network/networkWatchers/{networkWatcherName}/trafficAnalyticsConfigurations/default?api-version=2023-05-01";
+            string query_flow_logs_url = $"https://management.azure.com/subscriptions/{0}/resourceGroups/{1}/providers/Microsoft.Network/networkWatchers/{2}/trafficAnalyticsConfigurations/default?api-version=2023-05-01";
+            string enable_flow_logs_url = $"https://management.azure.com/subscriptions/{0}/resourceGroups/{1}/providers/Microsoft.Network/networkWatchers/{2}/trafficAnalyticsConfigurations/default?api-version=2023-05-01";
 
             log.LogInformation(e, "Entered into the check and enable flow request function");
 
@@ -232,7 +232,7 @@ namespace NwNsgProject
 
             	dynamic myObject = new JObject();
 //            	myObject.targetResourceId = vnet.id;
-            	HttpRequestMessage checkReq = new HttpRequestMessage(HttpMethod.Post, String.Format(query_flow_logs_url));
+            	HttpRequestMessage checkReq = new HttpRequestMessage(HttpMethod.Post, String.Format(query_flow_logs_url, subs_id,resourceGroupName, networkWatcherName));
             	var content = new StringContent(myObject.ToString(), Encoding.UTF8, "application/json");
             	checkReq.Content = content;
                 checkReq.Headers.Accept.Clear();
@@ -268,7 +268,7 @@ namespace NwNsgProject
             	log.LogInformation(e, "Entered into the check and enable flow request function and enabling the flow logs for this vnet");
 
 
-                HttpRequestMessage req = new HttpRequestMessage(HttpMethod.Post, String.Format(enable_flow_logs_url, loc_nw));
+                HttpRequestMessage req = new HttpRequestMessage(HttpMethod.Post, String.Format(enable_flow_logs_url, subs_id, resourceGroupName, networkWatcherName));
                 req.Content = content;
                 req.Headers.Accept.Clear();
                 req.Headers.Accept.Add(new MediaTypeWithQualityHeaderValue("application/json"));
