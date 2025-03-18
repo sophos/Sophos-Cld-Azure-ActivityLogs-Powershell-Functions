@@ -220,7 +220,7 @@ namespace NwNsgProject
         }
 
         static string extractResourceGroupName(string id){
-            int startIndex = id.IndexOf("resourceGroups/") + "resourceGroups/".Length;
+            int startIndex = id.IndexOf("resourceGroups/", StringComparison.OrdinalIgnoreCase) + "resourceGroups/".Length;
             int endIndex = id.IndexOf("/", startIndex);
             return id.Substring(startIndex, endIndex - startIndex);
         }
@@ -248,11 +248,11 @@ namespace NwNsgProject
 				    HashSet<string> enabledVnetIds = new HashSet<string>();
 				    foreach (var flowLog in json["value"]){
 				        var targetResourceId = flowLog["properties"]["targetResourceId"].ToString();
-                        if(targetResourceId.Contains("virtualNetworks")){
+                        if(targetResourceId.Contains("virtualNetworks", , StringComparison.OrdinalIgnoreCase)){
                             enabledVnetIds.Add(targetResourceId);
                         }
 				    }
-				    if(!enabledVnetIds.Contains(vnet.id)){
+				    if(!enabledVnetIds.Contains(vnet.id, StringComparison.OrdinalIgnoreCase)){
 				        dynamic properties = new JObject();
                         properties.storageId = storageId;
                         properties.targetResourceId = vnet.id;
@@ -265,7 +265,7 @@ namespace NwNsgProject
                         var content = new StringContent(myObject.ToString(), Encoding.UTF8, "application/json");
 
                         log.LogInformation( "Entered into the check and enable flow request function and enabling the flow logs for this vnet");
-                        string flowLogName = vnet.name + "-vnet-flowlogs";
+                        string flowLogName = vnet.name + "-" + resourceGroupName + "-flowlogs";
 
                         HttpRequestMessage request = new HttpRequestMessage(HttpMethod.Put, String.Format(enable_flow_logs_url, subs_id, resourceGroupName, nw_name, flowLogName));
                         request.Content = content;
