@@ -248,7 +248,7 @@ namespace NwNsgProject
 				    HashSet<string> enabledVnetIds = new HashSet<string>();
 				    foreach (var flowLog in json["value"]){
 				        var targetResourceId = flowLog["properties"]["targetResourceId"].ToString();
-                        if(targetResourceId.Contains("virtualNetworks", , StringComparison.OrdinalIgnoreCase)){
+                        if(targetResourceId.Contains("virtualNetworks", StringComparison.OrdinalIgnoreCase)){
                             enabledVnetIds.Add(targetResourceId);
                         }
 				    }
