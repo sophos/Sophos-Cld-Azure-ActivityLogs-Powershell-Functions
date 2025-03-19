@@ -234,12 +234,9 @@ namespace NwNsgProject
         	var client = new SingleHttpClientInstance();
         	try
             {
-                String resGrp = "NetworkWatcherRG";
+                String nwResourceGroup = "NetworkWatcherRG";
 				dynamic myObject = new JObject();
-				log.LogInformation("SubscriptionId: {subs_id}", subs_id);
-				log.LogInformation("ResourceGroup: {resourceGroupName}", resGrp);
-				log.LogInformation("Network Watcher Name: {nw_name}", nw_name);
-            	HttpRequestMessage req = new HttpRequestMessage(HttpMethod.Get, String.Format(query_flow_logs_url, subs_id, resGrp, nw_name));
+            	HttpRequestMessage req = new HttpRequestMessage(HttpMethod.Get, String.Format(query_flow_logs_url, subs_id, nwResourceGroup, nw_name));
                 req.Headers.Accept.Clear();
                 req.Headers.Accept.Add(new MediaTypeWithQualityHeaderValue("application/json"));
                 HttpResponseMessage response = await SingleHttpClientInstance.sendApiRequest(req, token);
