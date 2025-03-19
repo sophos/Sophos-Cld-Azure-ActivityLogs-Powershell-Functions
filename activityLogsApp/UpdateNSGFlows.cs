@@ -16,7 +16,7 @@ using System.Net.Http.Headers;
 using System.Security.Cryptography.X509Certificates;
 using System.Net.Security;
 using System.Threading;
-
+using System.Linq;
 
 namespace NwNsgProject
 {
@@ -35,7 +35,7 @@ namespace NwNsgProject
 
 			    var subs_ids = Environment.GetEnvironmentVariable("subscriptionIds").Split(',');
 			    string token = null;
-			    
+
 			    UriBuilder builder = new UriBuilder(Environment.GetEnvironmentVariable("MSI_ENDPOINT"));
 				string apiversion = Uri.EscapeDataString("2017-09-01");
 				string resource = Uri.EscapeDataString("https://management.azure.com/");
@@ -46,7 +46,7 @@ namespace NwNsgProject
 	                apiversion = Uri.EscapeDataString("2019-08-01");
 	                builder.Query = "api-version="+apiversion+"&resource="+resource+"&principal_id="+principal_id;
 	            }
-				
+
 				var client = new SingleHttpClientInstance();
 	            try
 	            {
@@ -241,8 +241,10 @@ namespace NwNsgProject
                 HttpResponseMessage response = await SingleHttpClientInstance.sendApiRequest(req, token);
 
                 log.LogInformation("Entered into the check and enable flow request function inside try");
+                log.LogInformation("Response status of query flow log api", response.IsSuccessStatusCode);
                 if (response.IsSuccessStatusCode)
 				{
+				    log.LogInformation("Response status of query flow log api is true");
 				    string check_data =  await response.Content.ReadAsStringAsync();
 				    var json = JObject.Parse(check_data);
 				    HashSet<string> enabledVnetIds = new HashSet<string>();
@@ -252,7 +254,12 @@ namespace NwNsgProject
                             enabledVnetIds.Add(targetResourceId);
                         }
 				    }
-				    if(!enabledVnetIds.Contains(vnet.id, StringComparison.OrdinalIgnoreCase)){
+				    foreach (var item in enabledVnetIds)
+                    {
+                        log.LogInformation("Value in Hashset: {Item}", item);
+                    }
+				    if(!enabledVnetIds.Any(id => string.Equals(id, vnet.id, StringComparison.OrdinalIgnoreCase))){
+				        log.LogInformation("Vnet id: {vnet.id}", vnet.id);
 				        dynamic properties = new JObject();
                         properties.storageId = storageId;
                         properties.targetResourceId = vnet.id;
@@ -263,6 +270,8 @@ namespace NwNsgProject
                         properties.retentionPolicy = retention;
                         myObject.properties = properties;
                         var content = new StringContent(myObject.ToString(), Encoding.UTF8, "application/json");
+
+                        log.Information("Storage account id: {storageId}", storageId)
 
                         log.LogInformation( "Entered into the check and enable flow request function and enabling the flow logs for this vnet");
                         string flowLogName = vnet.name + "-" + resourceGroupName + "-flowlogs";
@@ -276,6 +285,7 @@ namespace NwNsgProject
 
                         if (responseApi.IsSuccessStatusCode)
                         {
+                            log.LogInformation("enabling flow log is succeeded with api ")
                             string data =  await responseApi.Content.ReadAsStringAsync();
                         	return "true";
 
@@ -284,10 +294,6 @@ namespace NwNsgProject
 				} else{
 					return "false";
 				}
-
-
-
-
             }
             catch (System.Net.Http.HttpRequestException e)
             {
