@@ -277,6 +277,11 @@ namespace NwNsgProject
                         log.LogInformation( "Entered into the check and enable flow request function and enabling the flow logs for this vnet");
                         string flowLogName = vnet.name + "-" + resourceGroupName + "-flowlogs";
 
+                        log.LogInformation("Flow log name: {flowLogName}", flowLogName);
+                        log.LogInformation("SubscriptionId: {subs_id}", subs_id);
+                        log.LogInformation("NetworkWatcherName: {nw_name}", nw_name);
+                        log.LogInformation("Resource Group Name: {resourceGroupName}", resourceGroupName);
+
                         HttpRequestMessage request = new HttpRequestMessage(HttpMethod.Put, String.Format(enable_flow_logs_url, subs_id, resourceGroupName, nw_name, flowLogName));
                         request.Content = content;
                         request.Headers.Accept.Clear();
