@@ -271,7 +271,7 @@ namespace NwNsgProject
                         myObject.properties = properties;
                         var content = new StringContent(myObject.ToString(), Encoding.UTF8, "application/json");
 
-                        log.Information("Storage account id: {storageId}", storageId)
+                        log.LogInformation("Storage account id: {storageId}", storageId);
 
                         log.LogInformation( "Entered into the check and enable flow request function and enabling the flow logs for this vnet");
                         string flowLogName = vnet.name + "-" + resourceGroupName + "-flowlogs";
@@ -285,7 +285,7 @@ namespace NwNsgProject
 
                         if (responseApi.IsSuccessStatusCode)
                         {
-                            log.LogInformation("enabling flow log is succeeded with api ")
+                            log.LogInformation("enabling flow log is succeeded with api ");
                             string data =  await responseApi.Content.ReadAsStringAsync();
                         	return "true";
 
