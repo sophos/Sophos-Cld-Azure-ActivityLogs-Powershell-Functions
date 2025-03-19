@@ -280,9 +280,8 @@ namespace NwNsgProject
                         log.LogInformation("Flow log name: {flowLogName}", flowLogName);
                         log.LogInformation("SubscriptionId: {subs_id}", subs_id);
                         log.LogInformation("NetworkWatcherName: {nw_name}", nw_name);
-                        log.LogInformation("Resource Group Name: {resourceGroupName}", resourceGroupName);
 
-                        HttpRequestMessage request = new HttpRequestMessage(HttpMethod.Put, String.Format(enable_flow_logs_url, subs_id, resourceGroupName, nw_name, flowLogName));
+                        HttpRequestMessage request = new HttpRequestMessage(HttpMethod.Put, String.Format(enable_flow_logs_url, subs_id, nwResourceGroup, nw_name, flowLogName));
                         request.Content = content;
                         request.Headers.Accept.Clear();
                         request.Headers.Accept.Add(new MediaTypeWithQualityHeaderValue("application/json"));
