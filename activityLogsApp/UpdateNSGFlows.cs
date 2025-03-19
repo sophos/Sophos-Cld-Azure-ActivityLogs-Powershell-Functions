@@ -270,6 +270,7 @@ namespace NwNsgProject
                         retention.enabled = true;
                         properties.retentionPolicy = retention;
                         myObject.properties = properties;
+                        myObject.location = loc_nw;
                         var content = new StringContent(myObject.ToString(), Encoding.UTF8, "application/json");
 
                         log.LogInformation("Storage account id: {storageId}", storageId);
