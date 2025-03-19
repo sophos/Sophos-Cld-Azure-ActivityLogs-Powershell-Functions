@@ -16,7 +16,7 @@ using System.Net.Http.Headers;
 using System.Security.Cryptography.X509Certificates;
 using System.Net.Security;
 using System.Threading;
-
+using System.Linq;
 
 namespace NwNsgProject
 {
@@ -252,7 +252,7 @@ namespace NwNsgProject
                             enabledVnetIds.Add(targetResourceId);
                         }
 				    }
-				    if(!enabledVnetIds.Contains(vnet.id, StringComparison.OrdinalIgnoreCase)){
+				    if(!enabledVnetIds.Any(id => string.Equals(id, vnet.id, StringComparison.OrdinalIgnoreCase))){
 				        dynamic properties = new JObject();
                         properties.storageId = storageId;
                         properties.targetResourceId = vnet.id;
