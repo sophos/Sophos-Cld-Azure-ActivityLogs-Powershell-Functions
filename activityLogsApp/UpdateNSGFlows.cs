@@ -77,7 +77,6 @@ namespace NwNsgProject
 					Dictionary<string, string> nwList = new Dictionary<string, string>();
 					Dictionary<string, string> nwListName = new Dictionary<string, string>();
 					string list_network_watchers = "https://management.azure.com/subscriptions/{0}/providers/Microsoft.Network/networkWatchers?api-version=2021-06-01";
-//					string list_nsgs = "https://management.azure.com/subscriptions/{0}/providers/Microsoft.Network/networkSecurityGroups?api-version=2021-06-01";
 					string list_vnet = "https://management.azure.com/subscriptions/{0}/providers/Microsoft.Network/virtualNetworks?api-version=2024-05-01";
 					client = new SingleHttpClientInstance();
 		            try
@@ -126,7 +125,6 @@ namespace NwNsgProject
                             }
                             List<string> list_networkWatcherRegions = new List<string>(networkWatcherRegions);
 						   	await enable_flow_logs(result, nwList, token, subs_id, log,list_networkWatcherRegions, nwListName);
-						   	log.LogInformation("Added the flow logs for vnet successfully");
 						}
 		            }
 		            catch (System.Net.Http.HttpRequestException e)
@@ -175,7 +173,6 @@ namespace NwNsgProject
 
         static async Task enable_flow_logs(VNETApiResult vnetresult, Dictionary<string, string> nwList, String token, String subs_id, ILogger log,List<string> networkWatcherRegions, Dictionary<string, string> nwListName)
         {
-            log.LogInformation("Entered into the enable flow logs function");
         	Dictionary<string, string> storageloc = new Dictionary<string, string>();
         	string[] all_locations = new string[]{"eastasia","southeastasia","centralus","eastus","eastus2","westus","northcentralus","southcentralus","northeurope","westeurope","japanwest","japaneast","brazilsouth","australiaeast","australiasoutheast","southindia","centralindia","westindia","canadacentral","canadaeast","uksouth","ukwest","westcentralus","westus2","koreacentral","koreasouth","francecentral","uaenorth","switzerlandnorth","norwaywest","germanywestcentral","swedencentral","jioindiawest","westus3","norwayeast","southafricanorth","australiacentral2","australiacentral","francesouth","qatarcentral"};
         	List<string> list_locations = new List<string>(all_locations);
@@ -197,7 +194,6 @@ namespace NwNsgProject
                                }
                                string resourceGroup = extractResourceGroupName(vnet.id);
                                await check_and_enable_flow_request(vnet, resourceGroup, storageId, loc_nw, nw_name, subs_id, token, log);
-                               log.LogInformation("Completed the check and enable flow request function successfully");
                            } catch (System.Net.Http.HttpRequestException e) {
                                log.LogError(e, String.Format("Function UpdateNSGFlows is failed for Region : {0} is failing and subscriptionId : {1}",vnet.location ,subs_id));
                            }
@@ -226,10 +222,8 @@ namespace NwNsgProject
         }
 
         static async Task<String> check_and_enable_flow_request(VirtualNetwork vnet, String resourceGroupName, String storageId, String loc_nw, String nw_name, String subs_id, String token, ILogger log){
-        	log.LogInformation("Entered into the check and enable flow request function");
             string query_flow_logs_url = "https://management.azure.com/subscriptions/{0}/resourceGroups/{1}/providers/Microsoft.Network/networkWatchers/{2}/flowLogs?api-version=2024-05-01";
             string enable_flow_logs_url = "https://management.azure.com/subscriptions/{0}/resourceGroups/{1}/providers/Microsoft.Network/networkWatchers/{2}/flowLogs/{3}?api-version=2024-05-01";
-            log.LogInformation("Entered into the check and enable flow request function");
 
         	var client = new SingleHttpClientInstance();
         	try
@@ -241,11 +235,8 @@ namespace NwNsgProject
                 req.Headers.Accept.Add(new MediaTypeWithQualityHeaderValue("application/json"));
                 HttpResponseMessage response = await SingleHttpClientInstance.sendApiRequest(req, token);
 
-                log.LogInformation("Entered into the check and enable flow request function inside try");
-                log.LogInformation("Response status of query flow log api: {IsSuccessStatusCode}", response.IsSuccessStatusCode);
                 if (response.IsSuccessStatusCode)
 				{
-				    log.LogInformation("Response status of query flow log api is true");
 				    string check_data =  await response.Content.ReadAsStringAsync();
 				    var json = JObject.Parse(check_data);
 				    HashSet<string> enabledVnetIds = new HashSet<string>();
@@ -255,12 +246,7 @@ namespace NwNsgProject
                             enabledVnetIds.Add(targetResourceId);
                         }
 				    }
-				    foreach (var item in enabledVnetIds)
-                    {
-                        log.LogInformation("Value in Hashset: {Item}", item);
-                    }
 				    if(!enabledVnetIds.Any(id => string.Equals(id, vnet.id, StringComparison.OrdinalIgnoreCase))){
-				        log.LogInformation("Vnet id: {vnet.id}", vnet.id);
 				        dynamic properties = new JObject();
                         properties.storageId = storageId;
                         properties.targetResourceId = vnet.id;
@@ -273,14 +259,7 @@ namespace NwNsgProject
                         myObject.location = vnet.location;
                         var content = new StringContent(myObject.ToString(), Encoding.UTF8, "application/json");
 
-                        log.LogInformation("Storage account id: {storageId}", storageId);
-
-                        log.LogInformation( "Entered into the check and enable flow request function and enabling the flow logs for this vnet");
                         string flowLogName = vnet.name + "-" + resourceGroupName + "-flowlogs";
-
-                        log.LogInformation("Flow log name: {flowLogName}", flowLogName);
-                        log.LogInformation("SubscriptionId: {subs_id}", subs_id);
-                        log.LogInformation("NetworkWatcherName: {nw_name}", nw_name);
 
                         HttpRequestMessage request = new HttpRequestMessage(HttpMethod.Put, String.Format(enable_flow_logs_url, subs_id, nwResourceGroup, nw_name, flowLogName));
                         request.Content = content;
@@ -291,7 +270,6 @@ namespace NwNsgProject
 
                         if (responseApi.IsSuccessStatusCode)
                         {
-                            log.LogInformation("enabling flow log is succeeded with api ");
                             string data =  await responseApi.Content.ReadAsStringAsync();
                         	return "true";
 
