@@ -16,7 +16,7 @@ using System.Net.Http.Headers;
 using System.Security.Cryptography.X509Certificates;
 using System.Net.Security;
 using System.Threading;
-
+using System.Linq;
 
 namespace NwNsgProject
 {
@@ -35,7 +35,7 @@ namespace NwNsgProject
 
 			    var subs_ids = Environment.GetEnvironmentVariable("subscriptionIds").Split(',');
 			    string token = null;
-			    
+
 			    UriBuilder builder = new UriBuilder(Environment.GetEnvironmentVariable("MSI_ENDPOINT"));
 				string apiversion = Uri.EscapeDataString("2017-09-01");
 				string resource = Uri.EscapeDataString("https://management.azure.com/");
@@ -46,7 +46,7 @@ namespace NwNsgProject
 	                apiversion = Uri.EscapeDataString("2019-08-01");
 	                builder.Query = "api-version="+apiversion+"&resource="+resource+"&principal_id="+principal_id;
 	            }
-				
+
 				var client = new SingleHttpClientInstance();
 	            try
 	            {
@@ -74,26 +74,28 @@ namespace NwNsgProject
 	            foreach(var subs_id in subs_ids){
 		            ////// get network watchers first
 
-					Dictionary<string, string> nwList = new Dictionary<string, string>(); 
+					Dictionary<string, string> nwList = new Dictionary<string, string>();
+					Dictionary<string, string> nwListName = new Dictionary<string, string>();
 					string list_network_watchers = "https://management.azure.com/subscriptions/{0}/providers/Microsoft.Network/networkWatchers?api-version=2021-06-01";
-					string list_nsgs = "https://management.azure.com/subscriptions/{0}/providers/Microsoft.Network/networkSecurityGroups?api-version=2021-06-01";
+					string list_vnet = "https://management.azure.com/subscriptions/{0}/providers/Microsoft.Network/virtualNetworks?api-version=2024-05-01";
 					client = new SingleHttpClientInstance();
 		            try
 		            {
 		                HttpRequestMessage req = new HttpRequestMessage(HttpMethod.Get, String.Format(list_network_watchers, subs_id));
 		                req.Headers.Accept.Clear();
 		                req.Headers.Accept.Add(new MediaTypeWithQualityHeaderValue("application/json"));
-		                
+
 		                HttpResponseMessage response = await SingleHttpClientInstance.sendApiRequest(req, token);
 		                if (response.IsSuccessStatusCode)
 						{
 						    string data =  await response.Content.ReadAsStringAsync();
 						    var result = JsonConvert.DeserializeObject<NWApiResult>(data);
-						    
+
 						    foreach (var nw in result.value) {
 						    	nwList.Add(nw.location,nw.id);
+						    	nwListName.Add(nw.location,nw.name);
 						    }
-						    
+
 						}
 		            }
 		            catch (System.Net.Http.HttpRequestException e)
@@ -102,12 +104,12 @@ namespace NwNsgProject
 		            }
 
 
-		            ////// get all nsgs
+		            ////// get all vnet
 
 		            client = new SingleHttpClientInstance();
 		            try
 		            {
-		                HttpRequestMessage req = new HttpRequestMessage(HttpMethod.Get, String.Format(list_nsgs, subs_id));
+		                HttpRequestMessage req = new HttpRequestMessage(HttpMethod.Get, String.Format(list_vnet, subs_id));
 		                req.Headers.Accept.Clear();
 		                req.Headers.Accept.Add(new MediaTypeWithQualityHeaderValue("application/json"));
 		                HttpResponseMessage response = await SingleHttpClientInstance.sendApiRequest(req, token);
@@ -115,16 +117,16 @@ namespace NwNsgProject
 		                if (response.IsSuccessStatusCode)
 						{
 						    string data =  await response.Content.ReadAsStringAsync();
-						    var result = JsonConvert.DeserializeObject<NSGApiResult>(data);
+						    var result = JsonConvert.DeserializeObject<VNETApiResult>(data);
 
                             string[] networkWatcherRegions = new string[0];
                             if( !String.IsNullOrEmpty(Environment.GetEnvironmentVariable("nwRegions"))){
                                 networkWatcherRegions = Environment.GetEnvironmentVariable("nwRegions").Split(',');
                             }
                             List<string> list_networkWatcherRegions = new List<string>(networkWatcherRegions);
-						   	await enable_flow_logs(result, nwList, token, subs_id, log,list_networkWatcherRegions);
+						   	await enable_flow_logs(result, nwList, token, subs_id, log,list_networkWatcherRegions, nwListName);
 						}
-		            } 
+		            }
 		            catch (System.Net.Http.HttpRequestException e)
 		            {
 		                throw new System.Net.Http.HttpRequestException("Sending to Splunk. Is Splunk service running?", e);
@@ -135,7 +137,7 @@ namespace NwNsgProject
 		    {
 		        log.LogError(e, "Function UpdateNSGFlows is failed to process request");
 		    }
-			
+
 		}
 
         public class SingleHttpClientInstance
@@ -169,39 +171,40 @@ namespace NwNsgProject
 
         }
 
-        static async Task enable_flow_logs(NSGApiResult nsgresult, Dictionary<string, string> nwList, String token, String subs_id, ILogger log,List<string> networkWatcherRegions)
+        static async Task enable_flow_logs(VNETApiResult vnetresult, Dictionary<string, string> nwList, String token, String subs_id, ILogger log,List<string> networkWatcherRegions, Dictionary<string, string> nwListName)
         {
-        	
-        	Dictionary<string, string> storageloc = new Dictionary<string, string>(); 
+        	Dictionary<string, string> storageloc = new Dictionary<string, string>();
         	string[] all_locations = new string[]{"eastasia","southeastasia","centralus","eastus","eastus2","westus","northcentralus","southcentralus","northeurope","westeurope","japanwest","japaneast","brazilsouth","australiaeast","australiasoutheast","southindia","centralindia","westindia","canadacentral","canadaeast","uksouth","ukwest","westcentralus","westus2","koreacentral","koreasouth","francecentral","uaenorth","switzerlandnorth","norwaywest","germanywestcentral","swedencentral","jioindiawest","westus3","norwayeast","southafricanorth","australiacentral2","australiacentral","francesouth","qatarcentral"};
         	List<string> list_locations = new List<string>(all_locations);
-        	foreach (var nsg in nsgresult.value) {
-        		if(( networkWatcherRegions == null || networkWatcherRegions.Count == 0) || networkWatcherRegions.Contains(nsg.location) ){
-                   	if(list_locations.Contains(nsg.location)){
+        	foreach (var vnet in vnetresult.value) {
+        		if(( networkWatcherRegions == null || networkWatcherRegions.Count == 0) || networkWatcherRegions.Contains(vnet.location) ){
+                   	if(list_locations.Contains(vnet.location)){
                        try {
-                               string loc_nw = nwList[nsg.location];
+                               string loc_nw = nwList[vnet.location];
+                               string nw_name = nwListName[vnet.location];
                                string storageId = "";
-                               if(storageloc.ContainsKey(nsg.location)){
-                                   storageId = storageloc[nsg.location];
+                               if(storageloc.ContainsKey(vnet.location)){
+                                   storageId = storageloc[vnet.location];
                                }else{
-                                   storageId = await check_avid_storage_account(token,subs_id,nsg.location,log);
-                                   storageloc.Add(nsg.location, storageId);
+                                   storageId = await check_avid_storage_account(token,subs_id,vnet.location,log);
+                                   storageloc.Add(vnet.location, storageId);
                                }
                                if(storageId.Equals("null")){
                                    break;
                                }
-                               await check_and_enable_flow_request(nsg, storageId, loc_nw, subs_id, token, log);
+                               string resourceGroup = extractResourceGroupName(vnet.id);
+                               await check_and_enable_flow_request(vnet, resourceGroup, storageId, loc_nw, nw_name, subs_id, token, log);
                            } catch (System.Net.Http.HttpRequestException e) {
-                               log.LogError(e, String.Format("Function UpdateNSGFlows is failed for Region : {0} is failing and subscriptionId : {1}",nsg.location ,subs_id));
+                               log.LogError(e, String.Format("Function UpdateNSGFlows is failed for Region : {0} is failing and subscriptionId : {1}",vnet.location ,subs_id));
                            }
                     }
                 }
 		   	}
 
-		   	Dictionary<string, string> allnsgloc = new Dictionary<string, string>(); 
-		   	foreach (var nsg in nsgresult.value) {
-		   		if(!allnsgloc.ContainsKey(nsg.location)){
-		   			allnsgloc.Add(nsg.location, "yes");
+		   	Dictionary<string, string> allnsgloc = new Dictionary<string, string>();
+		   	foreach (var vnet in vnetresult.value) {
+		   		if(!allnsgloc.ContainsKey(vnet.location)){
+		   			allnsgloc.Add(vnet.location, "yes");
 		   		}
 		   	}
 
@@ -212,64 +215,70 @@ namespace NwNsgProject
 		   	}
         }
 
-        static async Task<String> check_and_enable_flow_request(NetworkSecurityGroup nsg, String storageId, String loc_nw, String subs_id, String token, ILogger log){
-        	string enable_flow_logs_url = "https://management.azure.com{0}/configureFlowLog?api-version=2021-06-01";
-        	string query_flow_logs_url = "https://management.azure.com{0}/queryFlowLogStatus?api-version=2021-06-01";
-        	
+        static string extractResourceGroupName(string id){
+            int startIndex = id.IndexOf("resourceGroups/", StringComparison.OrdinalIgnoreCase) + "resourceGroups/".Length;
+            int endIndex = id.IndexOf("/", startIndex);
+            return id.Substring(startIndex, endIndex - startIndex);
+        }
+
+        static async Task<String> check_and_enable_flow_request(VirtualNetwork vnet, String resourceGroupName, String storageId, String loc_nw, String nw_name, String subs_id, String token, ILogger log){
+            string query_flow_logs_url = "https://management.azure.com/subscriptions/{0}/resourceGroups/{1}/providers/Microsoft.Network/networkWatchers/{2}/flowLogs?api-version=2024-05-01";
+            string enable_flow_logs_url = "https://management.azure.com/subscriptions/{0}/resourceGroups/{1}/providers/Microsoft.Network/networkWatchers/{2}/flowLogs/{3}?api-version=2024-05-01";
 
         	var client = new SingleHttpClientInstance();
         	try
             {
+                String nwResourceGroup = "NetworkWatcherRG";
+				dynamic myObject = new JObject();
+            	HttpRequestMessage req = new HttpRequestMessage(HttpMethod.Get, String.Format(query_flow_logs_url, subs_id, nwResourceGroup, nw_name));
+                req.Headers.Accept.Clear();
+                req.Headers.Accept.Add(new MediaTypeWithQualityHeaderValue("application/json"));
+                HttpResponseMessage response = await SingleHttpClientInstance.sendApiRequest(req, token);
 
-            	dynamic myObject = new JObject();
-            	myObject.targetResourceId = nsg.id;
-            	HttpRequestMessage checkReq = new HttpRequestMessage(HttpMethod.Post, String.Format(query_flow_logs_url, loc_nw));
-            	var content = new StringContent(myObject.ToString(), Encoding.UTF8, "application/json");
-            	checkReq.Content = content;
-                checkReq.Headers.Accept.Clear();
-                checkReq.Headers.Accept.Add(new MediaTypeWithQualityHeaderValue("application/json"));
-
-                HttpResponseMessage check_response = await SingleHttpClientInstance.sendApiPostRequest(checkReq, token);
-                
-                if (check_response.IsSuccessStatusCode)
+                if (response.IsSuccessStatusCode)
 				{
-				    string check_data =  await check_response.Content.ReadAsStringAsync();
-				    var check_result = JsonConvert.DeserializeObject<FlowLogStatusResponse>(check_data);
-				    if(check_result.properties.enabled){
-				    	return "false";
+				    string check_data =  await response.Content.ReadAsStringAsync();
+				    var json = JObject.Parse(check_data);
+				    HashSet<string> enabledVnetIds = new HashSet<string>();
+				    foreach (var flowLog in json["value"]){
+				        var targetResourceId = flowLog["properties"]["targetResourceId"].ToString();
+                        if(targetResourceId.Contains("virtualNetworks", StringComparison.OrdinalIgnoreCase)){
+                            enabledVnetIds.Add(targetResourceId);
+                        }
 				    }
-				    
+				    if(!enabledVnetIds.Any(id => string.Equals(id, vnet.id, StringComparison.OrdinalIgnoreCase))){
+				        dynamic properties = new JObject();
+                        properties.storageId = storageId;
+                        properties.targetResourceId = vnet.id;
+                        properties.enabled = true;
+                        dynamic retention = new JObject();
+                        retention.days = 1;
+                        retention.enabled = true;
+                        properties.retentionPolicy = retention;
+                        myObject.properties = properties;
+                        myObject.location = vnet.location;
+                        var content = new StringContent(myObject.ToString(), Encoding.UTF8, "application/json");
+
+                        string flowLogName = vnet.name + "-" + resourceGroupName + "-flowlogs";
+
+                        HttpRequestMessage request = new HttpRequestMessage(HttpMethod.Put, String.Format(enable_flow_logs_url, subs_id, nwResourceGroup, nw_name, flowLogName));
+                        request.Content = content;
+                        request.Headers.Accept.Clear();
+                        request.Headers.Accept.Add(new MediaTypeWithQualityHeaderValue("application/json"));
+
+                        HttpResponseMessage responseApi = await SingleHttpClientInstance.sendApiPostRequest(request, token);
+
+                        if (responseApi.IsSuccessStatusCode)
+                        {
+                            string data =  await responseApi.Content.ReadAsStringAsync();
+                        	return "true";
+
+                        }
+				    }
 				} else{
 					return "false";
 				}
-
-
-            	dynamic properties = new JObject();
-            	properties.storageId = storageId;
-            	properties.enabled = true;
-            	dynamic retention = new JObject();
-            	retention.days = 1;
-            	retention.enabled = true;
-            	properties.retentionPolicy = retention;
-            	myObject.properties = properties;
-            	content = new StringContent(myObject.ToString(), Encoding.UTF8, "application/json");
-            	
-                
-                HttpRequestMessage req = new HttpRequestMessage(HttpMethod.Post, String.Format(enable_flow_logs_url, loc_nw));
-                req.Content = content;
-                req.Headers.Accept.Clear();
-                req.Headers.Accept.Add(new MediaTypeWithQualityHeaderValue("application/json"));
-
-                HttpResponseMessage response = await SingleHttpClientInstance.sendApiPostRequest(req, token);
-                
-                if (response.IsSuccessStatusCode)
-				{
-				    string data =  await response.Content.ReadAsStringAsync();
-				    return "true";
-				    
-				}
-
-            } 
+            }
             catch (System.Net.Http.HttpRequestException e)
             {
                 log.LogInformation(e, "Ignore. Failed for some region");
@@ -299,7 +308,7 @@ namespace NwNsgProject
                 req.Headers.Accept.Clear();
                 req.Headers.Accept.Add(new MediaTypeWithQualityHeaderValue("application/json"));
                 HttpResponseMessage response = await SingleHttpClientInstance.sendApiRequest(req, token);
-                
+
                 if (response.IsSuccessStatusCode)
 				{
 				    string data =  await response.Content.ReadAsStringAsync();
@@ -307,9 +316,9 @@ namespace NwNsgProject
 				    var is_deployment = await check_app_deployment(token, appNameStage1, subs_id, log);
 				    if(!is_deployment){
 				    	await listKeys(token, storage_account_name, storage_account_name_activity, appNameStage1, subs_id, log);
-				    } 
-				    return result.id; 	
-				    
+				    }
+				    return result.id;
+
 				}
 				else{
 					await create_resources(token, subs_id, location_codes[location], storage_account_name, location, log);
@@ -339,7 +348,7 @@ namespace NwNsgProject
 	            req.Content = content;
 
 			    HttpResponseMessage response = await SingleHttpClientInstance.sendApiPostRequest(req, token);
-			        
+
 	        }
 	        catch (System.Net.Http.HttpRequestException e)
             {
@@ -351,7 +360,7 @@ namespace NwNsgProject
         static async Task create_resources( String token, String subs_id, String location_code, String storage_account_name, String location, ILogger log){
 
         	string create_storage_account_url = "https://management.azure.com/subscriptions/{0}/resourceGroups/{1}/providers/Microsoft.Storage/storageAccounts/{2}?api-version=2021-08-01";
-        	
+
         	string customerid = Util.GetEnvironmentVariable("customerId");
         	string resourceGroup = Util.GetEnvironmentVariable("avidResourceGroup");
         	string local = Util.GetEnvironmentVariable("local");
@@ -362,7 +371,7 @@ namespace NwNsgProject
         	var subscription_tag = subs_id.Replace("-","").Substring(0,8) + customerid.Replace("-","").Substring(0,8);
         	string appNameStage1 = local + "AvidFlowLogs" + subscription_tag  + location_code;
         	string storage_account_name_activity = local + "avidact" + subscription_tag;
-        	
+
         	string storage_json_string = @"{""sku"": {""name"": ""Standard_GRS""}, ""kind"": ""StorageV2"", ""location"": ""eastus"", ""properties"": {""allowBlobPublicAccess"": false}}";
         	var storage_json = JsonConvert.DeserializeObject<StorageAccountPutObj>(storage_json_string);
         	storage_json.location = location;
@@ -380,8 +389,8 @@ namespace NwNsgProject
 	            req.Content = content;
 
 			    HttpResponseMessage response = await SingleHttpClientInstance.sendApiPostRequest(req, token);
-			    
-	            if (response.IsSuccessStatusCode)    
+
+	            if (response.IsSuccessStatusCode)
 	            {
 
 	            	int milliseconds = 80000;
@@ -389,9 +398,9 @@ namespace NwNsgProject
 
 					await create_retention_policy(token, subs_id, storage_account_name, log);
 					await listKeys(token, storage_account_name, storage_account_name_activity, appNameStage1, subs_id, log);
-	                
+
 	            }
-	                
+
 	        }
 	        catch (System.Net.Http.HttpRequestException e)
             {
@@ -407,9 +416,9 @@ namespace NwNsgProject
             list_req.Headers.Accept.Clear();
             list_req.Headers.Accept.Add(new MediaTypeWithQualityHeaderValue("application/json"));
             HttpResponseMessage response_keys = await SingleHttpClientInstance.sendApiRequest(list_req, token);
-            
+
             string data_check =  await response_keys.Content.ReadAsStringAsync();
-            
+
             if (response_keys.IsSuccessStatusCode)
 			{
 			    string data =  await response_keys.Content.ReadAsStringAsync();
@@ -421,7 +430,7 @@ namespace NwNsgProject
 
 			   	Boolean check_deploy = await deploy_app(token, accountkey , storage_account_name, storage_account_name_activity, appNameStage1, subs_id, log);
 			}
-			
+
         }
 
         static async Task<Boolean> deploy_app(String token, String accountkey , String storage_account_name, String storage_account_name_activity, String appNameStage1, String subs_id, ILogger log){
@@ -461,9 +470,9 @@ namespace NwNsgProject
 	            req.Content = content;
 
 			    HttpResponseMessage response = await SingleHttpClientInstance.sendApiPostRequest(req, token);
-			    
+
 			    var check_resp = await response.Content.ReadAsStringAsync();
-			    
+
 			    if (response.IsSuccessStatusCode){
 			    	return true;
 			    }
@@ -484,8 +493,8 @@ namespace NwNsgProject
                 req.Headers.Accept.Clear();
                 req.Headers.Accept.Add(new MediaTypeWithQualityHeaderValue("application/json"));
                 HttpResponseMessage response = await SingleHttpClientInstance.sendApiRequest(req, token);
-               
-                
+
+
                 if (response.IsSuccessStatusCode)
 				{
 				    return true;
@@ -511,7 +520,7 @@ namespace NwNsgProject
                 req.Headers.Accept.Add(new MediaTypeWithQualityHeaderValue("application/json"));
                 HttpResponseMessage response = await SingleHttpClientInstance.sendApiRequest(req, token);
 
-                
+
 			}
 			catch (System.Net.Http.HttpRequestException e)
             {
@@ -525,7 +534,7 @@ namespace NwNsgProject
                 req.Headers.Accept.Add(new MediaTypeWithQualityHeaderValue("application/json"));
                 HttpResponseMessage response = await SingleHttpClientInstance.sendApiRequest(req, token);
 
-                
+
 			}
 			catch (System.Net.Http.HttpRequestException e)
             {
@@ -548,14 +557,14 @@ namespace NwNsgProject
 
         	string appNameStage1 = local + "AvidFlowLogs" + subscription_tag  + location_codes[location];
 
-        	
+
         	try
         	{
         		HttpRequestMessage req = new HttpRequestMessage(HttpMethod.Get, String.Format(fetch_storage_account_details, subs_id, resourceGroup, storage_account_name));
                 req.Headers.Accept.Clear();
                 req.Headers.Accept.Add(new MediaTypeWithQualityHeaderValue("application/json"));
                 HttpResponseMessage response = await SingleHttpClientInstance.sendApiRequest(req, token);
-                
+
                 if (response.IsSuccessStatusCode)
 				{
 

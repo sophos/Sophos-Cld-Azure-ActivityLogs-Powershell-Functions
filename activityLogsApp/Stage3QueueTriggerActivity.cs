@@ -71,7 +71,7 @@ namespace NwNsgProject
         public static async Task SendMessagesDownstream(string myMessages, ILogger log)
         {
             await obAvidSecure(myMessages, log);
-            
+
         }
 
         static async Task obAvidSecure(string newClientContent, ILogger log)
@@ -95,7 +95,7 @@ namespace NwNsgProject
                 HttpRequestMessage req = new HttpRequestMessage(HttpMethod.Post, avidAddress);
                 req.Headers.Accept.Clear();
                 req.Headers.Accept.Add(new MediaTypeWithQualityHeaderValue("application/json"));
-                
+
                 req.Content = new StringContent(jsonString, Encoding.UTF8, "application/json");
                 HttpResponseMessage response = await SingleHttpClientInstance.SendToSplunk(req);
                 if (response.StatusCode != HttpStatusCode.OK)
@@ -115,7 +115,7 @@ namespace NwNsgProject
         }
 
 
-        
+
 
         public class SingleHttpClientInstance
         {
@@ -133,6 +133,6 @@ namespace NwNsgProject
                 return response;
             }
 
-        }      
+        }
     }
 }
