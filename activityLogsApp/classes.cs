@@ -376,6 +376,7 @@ class StorageSKU{
 }
 
 class StorageAccountPutObjProperties{
+    public String minimumTlsVersion {get; set;}
     public String allowBlobPublicAccess {get; set;}
 }
 
